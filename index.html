@@ -1,1 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Phase III — Attrition Analytics &amp; Explainability Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+@font-face { font-family:'Plex'; src:local('IBM Plex Sans'); }
+:root{
+  --bg:#0A1420;
+  --bg-2:#0C1826;
+  --panel:#101E2E;
+  --panel-2:#0D1826;
+  --line:#1E3040;
+  --teal:#2FD4C0;
+  --teal-dim:#1B8A7D;
+  --amber:#F0A93A;
+  --red:#E8615A;
+  --text:#E7EEF2;
+  --muted:#7F93A3;
+  --mono:'IBM Plex Mono', 'Courier New', monospace;
+  --sans:'IBM Plex Sans','Segoe UI',sans-serif;
+  --ease:cubic-bezier(.16,.84,.44,1);
+}
+*{box-sizing:border-box;}
+html{ scroll-behavior:smooth; }
+body{
+  margin:0; color:var(--text); font-family:var(--sans);
+  padding:28px 32px 60px;
+  background:
+    radial-gradient(1100px 500px at 85% -10%, rgba(47,212,192,.09), transparent 60%),
+    radial-gradient(900px 500px at -10% 10%, rgba(240,169,58,.06), transparent 55%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  background-attachment:fixed;
+}
+::selection{ background:var(--teal); color:#04211d; }
+::-webkit-scrollbar{ width:10px; height:10px; }
+::-webkit-scrollbar-track{ background:var(--bg-2); }
+::-webkit-scrollbar-thumb{ background:var(--line); border-radius:20px; }
+::-webkit-scrollbar-thumb:hover{ background:var(--teal-dim); }
+
+h1,h2,h3{ font-family:var(--sans); font-weight:600; margin:0;}
+.eyebrow{
+  font-family:var(--mono); letter-spacing:.14em; text-transform:uppercase;
+  font-size:11px; color:var(--teal); margin-bottom:6px;
+  display:flex; align-items:center; gap:8px;
+}
+.eyebrow::before{
+  content:""; width:7px; height:7px; border-radius:50%; background:var(--teal);
+  box-shadow:0 0 0 0 rgba(47,212,192,.6); animation:pulseDot 2.2s var(--ease) infinite;
+}
+@keyframes pulseDot{
+  0%{ box-shadow:0 0 0 0 rgba(47,212,192,.55); }
+  70%{ box-shadow:0 0 0 8px rgba(47,212,192,0); }
+  100%{ box-shadow:0 0 0 0 rgba(47,212,192,0); }
+}
+header.top{
+  display:flex; justify-content:space-between; align-items:flex-end;
+  border-bottom:1px solid var(--line); padding-bottom:18px; margin-bottom:22px; flex-wrap:wrap; gap:14px;
+  animation:fadeInUp .5s var(--ease) both;
+}
+header.top h1{ font-size:26px; letter-spacing:-.01em;}
+header.top p{ margin:6px 0 0; color:var(--muted); font-size:13px; max-width:560px;}
+.badge{
+  font-family:var(--mono); font-size:11px; padding:5px 10px; border:1px solid var(--teal-dim);
+  border-radius:20px; color:var(--teal); white-space:nowrap; transition:.25s var(--ease);
+}
+.badge:hover{ background:rgba(47,212,192,.1); box-shadow:0 0 0 3px rgba(47,212,192,.12); }
+
+@keyframes fadeInUp{
+  from{ opacity:0; transform:translateY(10px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
+.kpi-row{ display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:26px;}
+.kpi{
+  position:relative; overflow:hidden;
+  background:linear-gradient(160deg, var(--panel) 0%, var(--panel-2) 100%);
+  border:1px solid var(--line); border-radius:10px; padding:16px 18px;
+  transition:transform .25s var(--ease), border-color .25s var(--ease), box-shadow .25s var(--ease);
+  animation:fadeInUp .5s var(--ease) both;
+}
+.kpi::before{
+  content:""; position:absolute; top:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, var(--teal), transparent);
+  transform:scaleX(0); transform-origin:left; transition:transform .35s var(--ease);
+}
+.kpi:hover{ transform:translateY(-3px); border-color:var(--teal-dim); box-shadow:0 12px 24px -12px rgba(0,0,0,.5); }
+.kpi:hover::before{ transform:scaleX(1); }
+.kpi:nth-child(1){animation-delay:.03s;} .kpi:nth-child(2){animation-delay:.08s;}
+.kpi:nth-child(3){animation-delay:.13s;} .kpi:nth-child(4){animation-delay:.18s;}
+.kpi:nth-child(5){animation-delay:.23s;}
+.kpi .label{ font-size:11px; color:var(--muted); font-family:var(--mono); text-transform:uppercase; letter-spacing:.06em;}
+.kpi .value{ font-size:26px; font-weight:700; margin-top:6px; font-family:var(--mono); transition:color .2s; }
+.kpi .sub{ font-size:11px; color:var(--muted); margin-top:4px;}
+.teal{color:var(--teal);} .amber{color:var(--amber);} .red{color:var(--red);}
+
+.grid{ display:grid; grid-template-columns:1.3fr 1fr; gap:18px; margin-bottom:18px;}
+.panel{
+  background:linear-gradient(160deg, var(--panel) 0%, var(--panel-2) 100%);
+  border:1px solid var(--line); border-radius:12px; padding:20px 22px;
+  transition:border-color .3s var(--ease), box-shadow .3s var(--ease);
+  animation:fadeInUp .55s var(--ease) both;
+}
+.panel:hover{ border-color:#284354; box-shadow:0 16px 32px -20px rgba(0,0,0,.6); }
+.panel h2{ font-size:15px; margin-bottom:4px; position:relative; display:inline-block; }
+.panel h2::after{
+  content:""; position:absolute; left:0; bottom:-4px; height:2px; width:28px;
+  background:var(--teal); border-radius:2px;
+}
+.panel .desc{ font-size:12px; color:var(--muted); margin-bottom:14px; margin-top:10px;}
+.pill-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
+.pill{
+  font-family:var(--mono); font-size:11.5px; padding:6px 12px; border-radius:20px; cursor:pointer;
+  border:1px solid var(--line); background:var(--panel-2); color:var(--muted);
+  transition:transform .18s var(--ease), background .2s, color .2s, border-color .2s, box-shadow .2s;
+}
+.pill.active{ background:var(--teal-dim); color:#04211d; border-color:var(--teal); font-weight:600; box-shadow:0 4px 14px -4px rgba(47,212,192,.5); }
+.pill:hover{ border-color:var(--teal); color:var(--text); transform:translateY(-1px); }
+.pill:active{ transform:translateY(0) scale(.97); }
+canvas{max-width:100%;}
+.full{ grid-column:1 / -1;}
+
+table{ width:100%; border-collapse:collapse; font-size:12.5px;}
+th,td{ text-align:left; padding:9px 10px; border-bottom:1px solid var(--line);}
+th{ color:var(--muted); font-family:var(--mono); font-weight:500; text-transform:uppercase; font-size:10.5px; letter-spacing:.05em;}
+td.num{ font-family:var(--mono); text-align:right; font-variant-numeric:tabular-nums;}
+tr{ transition:background .18s var(--ease); }
+tr:hover td{ background:rgba(47,212,192,.05); }
+tr.hl td{ color:var(--teal); font-weight:600;}
+
+.sim-grid{ display:grid; grid-template-columns:1fr 1fr; gap:26px; align-items:center;}
+.control{ margin-bottom:16px;}
+.control label{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--muted); margin-bottom:6px;}
+.control label span.v{ color:var(--text); font-family:var(--mono); transition:color .2s; }
+
+/* custom range slider */
+input[type=range]{
+  -webkit-appearance:none; appearance:none; width:100%; height:5px; border-radius:8px;
+  background:linear-gradient(90deg, var(--teal-dim), var(--line)); outline:none; cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+  background:var(--teal); border:3px solid #04211d; cursor:pointer;
+  box-shadow:0 0 0 3px rgba(47,212,192,.18); transition:transform .15s var(--ease), box-shadow .15s;
+}
+input[type=range]::-webkit-slider-thumb:hover{ transform:scale(1.15); box-shadow:0 0 0 6px rgba(47,212,192,.22); }
+input[type=range]::-moz-range-thumb{
+  width:16px; height:16px; border-radius:50%; background:var(--teal); border:3px solid #04211d; cursor:pointer;
+}
+
+/* custom checkbox -> toggle switch */
+input[type=checkbox]{
+  -webkit-appearance:none; appearance:none; width:40px; height:22px; border-radius:20px;
+  background:var(--panel-2); border:1px solid var(--line); position:relative; cursor:pointer;
+  transition:background .25s var(--ease), border-color .25s var(--ease); vertical-align:middle;
+}
+input[type=checkbox]::before{
+  content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%;
+  background:var(--muted); transition:transform .25s var(--ease), background .25s var(--ease);
+}
+input[type=checkbox]:checked{ background:var(--teal-dim); border-color:var(--teal); }
+input[type=checkbox]:checked::before{ transform:translateX(18px); background:#04211d; }
+
+select{ accent-color:var(--teal); }
+:focus-visible{ outline:2px solid var(--teal); outline-offset:2px; border-radius:4px; }
+
+.toggle-row{ display:flex; align-items:center; justify-content:space-between; font-size:12.5px; color:var(--muted); padding:8px 0; border-bottom:1px dashed var(--line);}
+.gauge-wrap{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;}
+.gauge-label{ font-family:var(--mono); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em;}
+.gauge-value{ font-size:44px; font-weight:700; font-family:var(--mono); transition:color .3s var(--ease); animation:popIn .3s var(--ease); }
+@keyframes popIn{ from{ transform:scale(.9); opacity:.4; } to{ transform:scale(1); opacity:1; } }
+.gauge-band{ font-size:13px; font-weight:600; padding:4px 14px; border-radius:20px; transition:.3s var(--ease); }
+.note{ font-size:11px; color:var(--muted); text-align:center; max-width:320px; margin-top:6px;}
+
+footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; color:var(--muted); font-size:11px; font-family:var(--mono);}
+
+@media (max-width:1000px){
+  .kpi-row{grid-template-columns:repeat(2,1fr);}
+  .grid, .sim-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <div class="eyebrow">Phase III · Recruitment Funnel Analytics — IBM HR Attrition</div>
+    <h1>Attrition Analytics &amp; Explainability Dashboard</h1>
+    <p>Live exploration layer built on the Phase II LightGBM pipeline, re-executed for Phase III with SHAP explainability and a second-dataset generalisation check. Data below is computed directly from the 1,470-employee IBM HR Analytics dataset.</p>
+  </div>
+  <div class="badge">Naman Vaja · PGDM25246 · ISBR</div>
+</header>
+
+<div class="kpi-row" id="kpiRow"></div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Attrition Driver Explorer</h2>
+    <div class="desc">Select a dimension to see how attrition rate varies across employee segments. All figures computed from the raw dataset (n = 1,470).</div>
+    <div class="pill-row" id="pillRow"></div>
+    <canvas id="driverChart" height="230"></canvas>
+  </div>
+
+  <div class="panel">
+    <h2>Global Feature Importance (SHAP)</h2>
+    <div class="desc">Mean absolute SHAP value per feature — the LightGBM model's own account of what drives its predictions, averaged across the held-out test set.</div>
+    <canvas id="shapChart" height="270"></canvas>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel full">
+    <h2>Model Performance — Phase II vs. Phase III Reproduction vs. External Dataset</h2>
+    <div class="desc">Phase II figures are as originally reported. Phase III columns are freshly re-executed under the same SMOTE / feature-selection / LightGBM pipeline for SHAP analysis and external validation purposes — see Chapter 5 of the Phase III report for why exact figures shift slightly on re-run.</div>
+    <table>
+      <thead><tr><th>Metric</th><th class="num">Phase II (reported)</th><th class="num">Phase III reproduction (IBM HR)</th><th class="num">External validation (Kaggle HR Turnover, n=14,999)</th></tr></thead>
+      <tbody id="metricsTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="panel full">
+  <h2>Illustrative Attrition Risk Simulator</h2>
+  <div class="desc">Adjust an employee's profile on the six most influential SHAP drivers to see how the directional risk band moves. This is a simplified, weighted illustration of SHAP direction for intuition-building only — it is <b>not</b> the trained LightGBM model's output and should not be used for any real HR decision.</div>
+  <div class="sim-grid">
+    <div>
+      <div class="control">
+        <label>OverTime <span class="v" id="v_overtime">No</span></label>
+        <input type="checkbox" id="overtime">
+      </div>
+      <div class="control">
+        <label>Stock Option Level <span class="v" id="v_stock">1</span></label>
+        <input type="range" min="0" max="3" value="1" id="stock">
+      </div>
+      <div class="control">
+        <label>Job Satisfaction (1=Low, 4=Very High) <span class="v" id="v_jobsat">3</span></label>
+        <input type="range" min="1" max="4" value="3" id="jobsat">
+      </div>
+      <div class="control">
+        <label>Work Life Balance (1=Bad, 4=Best) <span class="v" id="v_wlb">3</span></label>
+        <input type="range" min="1" max="4" value="3" id="wlb">
+      </div>
+      <div class="control">
+        <label>Monthly Income (₹ thousand equiv.) <span class="v" id="v_income">6.5</span></label>
+        <input type="range" min="1" max="20" step="0.5" value="6.5" id="income">
+      </div>
+      <div class="control">
+        <label>Years At Company <span class="v" id="v_years">3</span></label>
+        <input type="range" min="0" max="25" value="3" id="years">
+      </div>
+    </div>
+    <div class="gauge-wrap">
+      <div class="gauge-label">Illustrative attrition risk</div>
+      <div class="gauge-value" id="gaugeValue">—</div>
+      <div class="gauge-band" id="gaugeBand">—</div>
+      <canvas id="gaugeChart" width="260" height="150"></canvas>
+      <div class="note">Weights derived from the relative SHAP magnitudes shown above (StockOptionLevel and MonthlyIncome dominate; direction of effect follows Phase II/III EDA findings).</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Phase III — Recruitment Funnel Analytics · Data: IBM HR Analytics Employee Attrition &amp; Performance (Kaggle, n=1,470) · External validation: Kaggle HR Analytics Turnover (n=14,999) · Model: LightGBM + SMOTE(0.85) + Chi²/ANOVA feature selection · Explainability: SHAP TreeExplainer
+</footer>
+
+<script>
+const DATA = {"dashboard": {"overall_rate": 16.1, "total_employees": 1470, "total_attrited": 237, "by_department": [{"Department": "Human Resources", "mean": 19.0, "count": 63}, {"Department": "Research & Development", "mean": 13.8, "count": 961}, {"Department": "Sales", "mean": 20.6, "count": 446}], "by_jobrole": [{"JobRole": "Healthcare Representative", "mean": 6.9, "count": 131}, {"JobRole": "Human Resources", "mean": 23.1, "count": 52}, {"JobRole": "Laboratory Technician", "mean": 23.9, "count": 259}, {"JobRole": "Manager", "mean": 4.9, "count": 102}, {"JobRole": "Manufacturing Director", "mean": 6.9, "count": 145}, {"JobRole": "Research Director", "mean": 2.5, "count": 80}, {"JobRole": "Research Scientist", "mean": 16.1, "count": 292}, {"JobRole": "Sales Executive", "mean": 17.5, "count": 326}, {"JobRole": "Sales Representative", "mean": 39.8, "count": 83}], "by_overtime": [{"OverTime": "No", "mean": 10.4, "count": 1054}, {"OverTime": "Yes", "mean": 30.5, "count": 416}], "by_worklifebalance": [{"WorkLifeBalance": 1, "mean": 31.2, "count": 80}, {"WorkLifeBalance": 2, "mean": 16.9, "count": 344}, {"WorkLifeBalance": 3, "mean": 14.2, "count": 893}, {"WorkLifeBalance": 4, "mean": 17.6, "count": 153}], "by_joblevel": [{"JobLevel": 1, "mean": 26.3, "count": 543}, {"JobLevel": 2, "mean": 9.7, "count": 534}, {"JobLevel": 3, "mean": 14.7, "count": 218}, {"JobLevel": 4, "mean": 4.7, "count": 106}, {"JobLevel": 5, "mean": 7.2, "count": 69}], "by_maritalstatus": [{"MaritalStatus": "Divorced", "mean": 10.1, "count": 327}, {"MaritalStatus": "Married", "mean": 12.5, "count": 673}, {"MaritalStatus": "Single", "mean": 25.5, "count": 470}], "by_businesstravel": [{"BusinessTravel": "Non-Travel", "mean": 8.0, "count": 150}, {"BusinessTravel": "Travel_Frequently", "mean": 24.9, "count": 277}, {"BusinessTravel": "Travel_Rarely", "mean": 15.0, "count": 1043}], "by_stockoption": [{"StockOptionLevel": 0, "mean": 24.4, "count": 631}, {"StockOptionLevel": 1, "mean": 9.4, "count": 596}, {"StockOptionLevel": 2, "mean": 7.6, "count": 158}, {"StockOptionLevel": 3, "mean": 17.6, "count": 85}], "by_agegroup": [{"Age_grp": "18-24", "mean": 39.2, "count": 97}, {"Age_grp": "25-29", "mean": 23.1, "count": 229}, {"Age_grp": "30-34", "mean": 18.2, "count": 325}, {"Age_grp": "35-39", "mean": 10.1, "count": 297}, {"Age_grp": "40-44", "mean": 10.1, "count": 208}, {"Age_grp": "45-49", "mean": 9.2, "count": 141}, {"Age_grp": "50-54", "mean": 11.5, "count": 104}, {"Age_grp": "55-60", "mean": 15.9, "count": 69}], "by_training": [{"TrainingTimesLastYear": 0, "mean": 27.8, "count": 54}, {"TrainingTimesLastYear": 1, "mean": 12.7, "count": 71}, {"TrainingTimesLastYear": 2, "mean": 17.9, "count": 547}, {"TrainingTimesLastYear": 3, "mean": 14.1, "count": 491}, {"TrainingTimesLastYear": 4, "mean": 21.1, "count": 123}, {"TrainingTimesLastYear": 5, "mean": 11.8, "count": 119}, {"TrainingTimesLastYear": 6, "mean": 9.2, "count": 65}], "by_yearsatcompany": [{"YearsAtCompany_grp": "0-1", "mean": 34.9, "count": 215}, {"YearsAtCompany_grp": "2", "mean": 21.3, "count": 127}, {"YearsAtCompany_grp": "3-4", "mean": 16.4, "count": 238}, {"YearsAtCompany_grp": "5-7", "mean": 11.3, "count": 362}, {"YearsAtCompany_grp": "8-10", "mean": 12.4, "count": 282}, {"YearsAtCompany_grp": "11-15", "mean": 6.5, "count": 108}, {"YearsAtCompany_grp": "16-20", "mean": 6.9, "count": 72}, {"YearsAtCompany_grp": "21+", "mean": 12.1, "count": 66}]}, "shap_importance": [{"feature": "StockOptionLevel", "mean_abs_shap": 2.1279440017}, {"feature": "MonthlyIncome", "mean_abs_shap": 1.3932642773}, {"feature": "JobInvolvement", "mean_abs_shap": 1.2610207957}, {"feature": "JobSatisfaction", "mean_abs_shap": 1.1892082338}, {"feature": "OverTime", "mean_abs_shap": 1.162352328}, {"feature": "EnvironmentSatisfaction", "mean_abs_shap": 1.0528086867}, {"feature": "RelationshipSatisfaction", "mean_abs_shap": 0.8541494563}, {"feature": "YearsWithCurrManager", "mean_abs_shap": 0.8272609338}, {"feature": "WorkLifeBalance", "mean_abs_shap": 0.6775939876}, {"feature": "YearsInCurrentRole", "mean_abs_shap": 0.6663388958}, {"feature": "TrainingTimesLastYear", "mean_abs_shap": 0.546785378}, {"feature": "YearsAtCompany", "mean_abs_shap": 0.4682537832}, {"feature": "Age", "mean_abs_shap": 0.4453580714}, {"feature": "TotalWorkingYears", "mean_abs_shap": 0.4175288637}, {"feature": "Education", "mean_abs_shap": 0.4042691874}, {"feature": "JobLevel", "mean_abs_shap": 0.3411209506}], "phase3_model": {"cv_roc_auc": 0.9589354130986301, "test_roc_auc": 0.9496065685939103, "test_accuracy": 0.8746355685131195, "test_f1": 0.8634920634920635, "confusion_matrix": [[164, 21], [22, 136]], "final_features": ["JobLevel", "JobInvolvement", "OverTime", "JobSatisfaction", "EnvironmentSatisfaction", "RelationshipSatisfaction", "StockOptionLevel", "WorkLifeBalance", "Education", "MonthlyIncome", "TotalWorkingYears", "YearsAtCompany", "YearsInCurrentRole", "YearsWithCurrManager", "TrainingTimesLastYear", "Age"], "n_train": 1938, "n_test": 343}, "external_validation": {"dataset": "HR_comma_sep.csv (Kaggle HR Analytics Turnover, n=14999)", "n_records": 14999, "base_attrition_rate": 0.2380825388359224, "cv_roc_auc": 0.9973409301932821, "test_roc_auc": 0.9968872498504255, "test_accuracy": 0.9851828499369483, "test_f1": 0.9837201246969172, "confusion_matrix": [[1705, 10], [37, 1420]], "n_train": 17969, "n_test": 3172}};
+
+// ---------- KPI cards ----------
+const kpis = [
+  {label:"Employees analysed", value: DATA.dashboard.total_employees, sub:"IBM HR Analytics dataset", cls:""},
+  {label:"Overall attrition rate", value: DATA.dashboard.overall_rate+"%", sub: DATA.dashboard.total_attrited+" of "+DATA.dashboard.total_employees+" employees left", cls:"amber"},
+  {label:"Phase III test ROC-AUC", value:(DATA.phase3_model.test_roc_auc*100).toFixed(1)+"%", sub:"LightGBM, reproduced pipeline", cls:"teal"},
+  {label:"External validation AUC", value:(DATA.external_validation.test_roc_auc*100).toFixed(1)+"%", sub:"Second HR dataset, n=14,999", cls:"teal"},
+  {label:"Top SHAP driver", value: DATA.shap_importance[0].feature, sub:"Highest mean |SHAP| impact", cls:"red"},
+];
+document.getElementById("kpiRow").innerHTML = kpis.map(k=>`
+  <div class="kpi">
+    <div class="label">${k.label}</div>
+    <div class="value ${k.cls}">${k.value}</div>
+    <div class="sub">${k.sub}</div>
+  </div>`).join("");
+
+// ---------- Driver explorer ----------
+const dims = {
+  "Overtime": {key:"by_overtime", cat:"OverTime"},
+  "Department": {key:"by_department", cat:"Department"},
+  "Job Role": {key:"by_jobrole", cat:"JobRole"},
+  "Job Level": {key:"by_joblevel", cat:"JobLevel"},
+  "Work Life Balance": {key:"by_worklifebalance", cat:"WorkLifeBalance"},
+  "Marital Status": {key:"by_maritalstatus", cat:"MaritalStatus"},
+  "Business Travel": {key:"by_businesstravel", cat:"BusinessTravel"},
+  "Stock Option Level": {key:"by_stockoption", cat:"StockOptionLevel"},
+  "Age Group": {key:"by_agegroup", cat:"Age_grp"},
+  "Years At Company": {key:"by_yearsatcompany", cat:"YearsAtCompany_grp"},
+  "Trainings Last Year": {key:"by_training", cat:"TrainingTimesLastYear"},
+};
+const pillRow = document.getElementById("pillRow");
+Object.keys(dims).forEach((label,i)=>{
+  const p = document.createElement("div");
+  p.className = "pill"+(i===0?" active":"");
+  p.textContent = label;
+  p.onclick = ()=>{
+    document.querySelectorAll(".pill").forEach(x=>x.classList.remove("active"));
+    p.classList.add("active");
+    renderDriver(label);
+  };
+  pillRow.appendChild(p);
+});
+
+let driverChart;
+function renderDriver(label){
+  const d = dims[label];
+  const rows = DATA.dashboard[d.key];
+  const labels = rows.map(r=>String(r[d.cat]));
+  const values = rows.map(r=>r.mean);
+  const counts = rows.map(r=>r.count);
+  if(driverChart) driverChart.destroy();
+  const ctx = document.getElementById("driverChart").getContext("2d");
+  driverChart = new Chart(ctx, {
+    type:"bar",
+    data:{ labels, datasets:[{
+      label:"Attrition rate (%)", data: values,
+      backgroundColor: values.map(v=> v>25?"#E8615A": v>15?"#F0A93A":"#2FD4C0"),
+      borderRadius:4, maxBarThickness:38
+    }]},
+    options:{
+      plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{ afterLabel: (c)=> "n = "+counts[c.dataIndex] } } },
+      scales:{
+        x:{ ticks:{ color:"#7F93A3", font:{family:"IBM Plex Mono", size:10.5}, maxRotation:40, minRotation:0 }, grid:{color:"#1E3040"} },
+        y:{ ticks:{ color:"#7F93A3" }, grid:{color:"#1E3040"}, title:{display:true, text:"Attrition rate (%)", color:"#7F93A3"} }
+      }
+    }
+  });
+}
+renderDriver("Overtime");
+
+// ---------- SHAP importance chart ----------
+const shapCtx = document.getElementById("shapChart").getContext("2d");
+new Chart(shapCtx, {
+  type:"bar",
+  data:{
+    labels: DATA.shap_importance.map(r=>r.feature),
+    datasets:[{ data: DATA.shap_importance.map(r=>r.mean_abs_shap), backgroundColor:"#2FD4C0", borderRadius:4 }]
+  },
+  options:{
+    indexAxis:"y",
+    plugins:{ legend:{display:false} },
+    scales:{
+      x:{ ticks:{color:"#7F93A3"}, grid:{color:"#1E3040"}, title:{display:true, text:"Mean |SHAP value|", color:"#7F93A3"} },
+      y:{ ticks:{color:"#7F93A3", font:{size:10.5}}, grid:{display:false} }
+    }
+  }
+});
+
+// ---------- Metrics table ----------
+const rowsDef = [
+  ["CV ROC-AUC", 92.14, DATA.phase3_model.cv_roc_auc*100, DATA.external_validation.cv_roc_auc*100],
+  ["Test ROC-AUC", 88.44, DATA.phase3_model.test_roc_auc*100, DATA.external_validation.test_roc_auc*100],
+  ["Test Accuracy", 89.0, DATA.phase3_model.test_accuracy*100, DATA.external_validation.test_accuracy*100],
+  ["Test F1 (Attrition class)", 88.0, DATA.phase3_model.test_f1*100, DATA.external_validation.test_f1*100],
+];
+document.getElementById("metricsTable").innerHTML = rowsDef.map(r=>`
+  <tr>
+    <td>${r[0]}</td>
+    <td class="num">${r[1].toFixed(2)}%</td>
+    <td class="num">${r[2].toFixed(2)}%</td>
+    <td class="num">${r[3].toFixed(2)}%</td>
+  </tr>`).join("");
+
+// ---------- Risk simulator ----------
+const ids = ["overtime","stock","jobsat","wlb","income","years"];
+function updateLabels(){
+  document.getElementById("v_overtime").textContent = document.getElementById("overtime").checked ? "Yes":"No";
+  document.getElementById("v_stock").textContent = document.getElementById("stock").value;
+  document.getElementById("v_jobsat").textContent = document.getElementById("jobsat").value;
+  document.getElementById("v_wlb").textContent = document.getElementById("wlb").value;
+  document.getElementById("v_income").textContent = document.getElementById("income").value;
+  document.getElementById("v_years").textContent = document.getElementById("years").value;
+}
+
+let gaugeChart;
+function computeRisk(){
+  const overtime = document.getElementById("overtime").checked ? 1:0;
+  const stock = +document.getElementById("stock").value;
+  const jobsat = +document.getElementById("jobsat").value;
+  const wlb = +document.getElementById("wlb").value;
+  const income = +document.getElementById("income").value;
+  const years = +document.getElementById("years").value;
+
+  // Weighted illustrative score (0-100). Weights loosely proportional to SHAP magnitudes.
+  let score = 35; // baseline near overall dataset rate midpoint
+  score += overtime ? 22 : -8;
+  score += (1 - stock/3) * 24;          // low stock option -> higher risk
+  score += (4 - jobsat)/3 * 16;         // low satisfaction -> higher risk
+  score += (4 - wlb)/3 * 10;
+  score += (1 - Math.min(income,15)/15) * 14; // low income -> higher risk
+  score += years <= 2 ? 10 : (years >=11 ? -10 : 0);
+  score = Math.max(2, Math.min(96, score));
+
+  const band = score >= 60 ? {t:"High risk", c:"#E8615A"} : score >= 32 ? {t:"Moderate risk", c:"#F0A93A"} : {t:"Low risk", c:"#2FD4C0"};
+
+  const gv = document.getElementById("gaugeValue");
+  gv.textContent = score.toFixed(0)+"%";
+  gv.style.color = band.c;
+  gv.style.animation = "none"; void gv.offsetWidth; gv.style.animation = "";
+  const bandEl = document.getElementById("gaugeBand");
+  bandEl.textContent = band.t;
+  bandEl.style.background = band.c+"22";
+  bandEl.style.color = band.c;
+
+  if(gaugeChart) gaugeChart.destroy();
+  const ctx = document.getElementById("gaugeChart").getContext("2d");
+  gaugeChart = new Chart(ctx, {
+    type:"doughnut",
+    data:{ datasets:[{ data:[score, 100-score], backgroundColor:[band.c, "#182838"], borderWidth:0 }]},
+    options:{ circumference:180, rotation:270, cutout:"75%", plugins:{legend:{display:false}, tooltip:{enabled:false}} }
+  });
+}
+ids.forEach(id=> document.getElementById(id).addEventListener("input", ()=>{ updateLabels(); computeRisk(); }));
+updateLabels();
+computeRisk();
+</script>
+</body>
+</html>
 
