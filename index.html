@@ -33,7 +33,7 @@
   --amber:#F0A93A;
   --red:#E8615A;
   --text:#F1ECE4;
-  --muted:#9C90A8;
+  --muted:#ADA2C0;
   --mono:'IBM Plex Mono', 'SF Mono', 'Courier New', monospace;
   --sans:'Segoe UI', -apple-system, 'Helvetica Neue', Arial, sans-serif;
   --serif:'Iowan Old Style', 'Palatino Linotype', Georgia, 'Times New Roman', serif;
@@ -63,7 +63,7 @@ body{
 h1,h2,h3{ font-family:var(--serif); font-weight:600; margin:0;}
 .eyebrow{
   font-family:var(--mono); letter-spacing:.14em; text-transform:uppercase;
-  font-size:11px; color:var(--gold-soft); margin-bottom:6px;
+  font-size:12px; color:var(--gold-soft); margin-bottom:6px;
   display:flex; align-items:center; gap:8px;
 }
 .eyebrow::before{
@@ -80,10 +80,10 @@ header.top{
   border-bottom:1px solid var(--line); padding-bottom:18px; margin-bottom:22px; flex-wrap:wrap; gap:14px;
   animation:fadeInUp .5s var(--ease) both;
 }
-header.top h1{ font-size:28px; letter-spacing:-.01em; font-style:italic;}
-header.top p{ margin:6px 0 0; color:var(--muted); font-size:13px; max-width:560px;}
+header.top h1{ font-size:32px; letter-spacing:-.01em; font-style:italic;}
+header.top p{ margin:6px 0 0; color:var(--muted); font-size:14.5px; max-width:600px;}
 .badge{
-  font-family:var(--mono); font-size:11px; padding:5px 10px; border:1px solid var(--gold-dim);
+  font-family:var(--mono); font-size:12px; padding:5px 10px; border:1px solid var(--gold-dim);
   border-radius:20px; color:var(--gold-soft); white-space:nowrap; transition:.25s var(--ease);
 }
 .badge:hover{ background:rgba(217,169,84,.1); box-shadow:0 0 0 3px rgba(217,169,84,.12); }
@@ -111,9 +111,9 @@ header.top p{ margin:6px 0 0; color:var(--muted); font-size:13px; max-width:560p
 .kpi:nth-child(1){animation-delay:.03s;} .kpi:nth-child(2){animation-delay:.08s;}
 .kpi:nth-child(3){animation-delay:.13s;} .kpi:nth-child(4){animation-delay:.18s;}
 .kpi:nth-child(5){animation-delay:.23s;}
-.kpi .label{ font-size:11px; color:var(--muted); font-family:var(--mono); text-transform:uppercase; letter-spacing:.06em;}
-.kpi .value{ font-size:26px; font-weight:700; margin-top:6px; font-family:var(--mono); transition:color .2s; }
-.kpi .sub{ font-size:11px; color:var(--muted); margin-top:4px;}
+.kpi .label{ font-size:12px; color:var(--muted); font-family:var(--mono); text-transform:uppercase; letter-spacing:.06em;}
+.kpi .value{ font-size:31px; font-weight:700; margin-top:6px; font-family:var(--mono); transition:color .2s; }
+.kpi .sub{ font-size:12.5px; color:var(--muted); margin-top:4px;}
 .teal{color:var(--teal);} .amber{color:var(--amber);} .red{color:var(--red);}
 
 .grid{ display:grid; grid-template-columns:1.3fr 1fr; gap:18px; margin-bottom:18px;}
@@ -124,15 +124,15 @@ header.top p{ margin:6px 0 0; color:var(--muted); font-size:13px; max-width:560p
   animation:fadeInUp .55s var(--ease) both;
 }
 .panel:hover{ border-color:#3A2E4A; box-shadow:0 16px 32px -20px rgba(0,0,0,.6); }
-.panel h2{ font-size:17px; margin-bottom:4px; position:relative; display:inline-block; font-style:italic; }
+.panel h2{ font-size:19px; margin-bottom:4px; position:relative; display:inline-block; font-style:italic; }
 .panel h2::after{
   content:""; position:absolute; left:0; bottom:-4px; height:2px; width:28px;
   background:var(--gold); border-radius:2px;
 }
-.panel .desc{ font-size:12px; color:var(--muted); margin-bottom:14px; margin-top:10px;}
+.panel .desc{ font-size:13.5px; color:var(--muted); margin-bottom:14px; margin-top:10px; line-height:1.5;}
 .pill-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
 .pill{
-  font-family:var(--mono); font-size:11.5px; padding:6px 12px; border-radius:20px; cursor:pointer;
+  font-family:var(--mono); font-size:12.5px; padding:6px 12px; border-radius:20px; cursor:pointer;
   border:1px solid var(--line); background:var(--panel-2); color:var(--muted);
   transition:transform .18s var(--ease), background .2s, color .2s, border-color .2s, box-shadow .2s;
 }
@@ -142,9 +142,9 @@ header.top p{ margin:6px 0 0; color:var(--muted); font-size:13px; max-width:560p
 canvas{max-width:100%;}
 .full{ grid-column:1 / -1;}
 
-table{ width:100%; border-collapse:collapse; font-size:12.5px;}
-th,td{ text-align:left; padding:9px 10px; border-bottom:1px solid var(--line);}
-th{ color:var(--muted); font-family:var(--mono); font-weight:500; text-transform:uppercase; font-size:10.5px; letter-spacing:.05em;}
+table{ width:100%; border-collapse:collapse; font-size:14px;}
+th,td{ text-align:left; padding:11px 10px; border-bottom:1px solid var(--line);}
+th{ color:var(--muted); font-family:var(--mono); font-weight:500; text-transform:uppercase; font-size:11.5px; letter-spacing:.05em;}
 td.num{ font-family:var(--mono); text-align:right; font-variant-numeric:tabular-nums;}
 tr{ transition:background .18s var(--ease); }
 tr:hover td{ background:rgba(217,169,84,.06); }
@@ -152,7 +152,7 @@ tr.hl td{ color:var(--gold-soft); font-weight:600;}
 
 .sim-grid{ display:grid; grid-template-columns:1fr 1fr; gap:26px; align-items:center;}
 .control{ margin-bottom:16px;}
-.control label{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--muted); margin-bottom:6px;}
+.control label{ display:flex; justify-content:space-between; font-size:13.5px; color:var(--muted); margin-bottom:6px;}
 .control label span.v{ color:var(--text); font-family:var(--mono); transition:color .2s; }
 
 /* custom range slider */
@@ -188,31 +188,31 @@ select{ accent-color:var(--gold); }
 
 .toggle-row{ display:flex; align-items:center; justify-content:space-between; font-size:12.5px; color:var(--muted); padding:8px 0; border-bottom:1px dashed var(--line);}
 .gauge-wrap{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;}
-.gauge-label{ font-family:var(--mono); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em;}
-.gauge-value{ font-size:44px; font-weight:700; font-family:var(--mono); transition:color .3s var(--ease); animation:popIn .3s var(--ease); }
+.gauge-label{ font-family:var(--mono); font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em;}
+.gauge-value{ font-size:50px; font-weight:700; font-family:var(--mono); transition:color .3s var(--ease); animation:popIn .3s var(--ease); }
 @keyframes popIn{ from{ transform:scale(.9); opacity:.4; } to{ transform:scale(1); opacity:1; } }
-.gauge-band{ font-size:13px; font-weight:600; padding:4px 14px; border-radius:20px; transition:.3s var(--ease); }
-.note{ font-size:11px; color:var(--muted); text-align:center; max-width:320px; margin-top:6px;}
+.gauge-band{ font-size:14.5px; font-weight:600; padding:4px 14px; border-radius:20px; transition:.3s var(--ease); }
+.note{ font-size:12.5px; color:var(--muted); text-align:center; max-width:340px; margin-top:6px;}
 
-footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; color:var(--muted); font-size:11px; font-family:var(--mono);}
+footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; color:var(--muted); font-size:12px; font-family:var(--mono);}
 
 /* Insight strip */
 .insight-strip{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:22px; }
 .insight-card{
   background:linear-gradient(160deg, rgba(217,169,84,.09), rgba(217,169,84,.02));
-  border:1px solid var(--gold-dim); border-radius:10px; padding:14px 16px;
-  font-size:12.5px; line-height:1.5; animation:fadeInUp .5s var(--ease) both;
+  border:1px solid var(--gold-dim); border-radius:10px; padding:15px 17px;
+  font-size:13.5px; line-height:1.55; animation:fadeInUp .5s var(--ease) both;
   display:flex; gap:10px; align-items:flex-start;
 }
 .insight-card .icon{ font-size:17px; line-height:1; }
 .insight-card b{ color:var(--gold-soft); }
 
 /* Legend + toggle */
-.legend-row{ display:flex; gap:16px; flex-wrap:wrap; margin-top:12px; font-size:11.5px; color:var(--muted); }
+.legend-row{ display:flex; gap:16px; flex-wrap:wrap; margin-top:12px; font-size:12.5px; color:var(--muted); }
 .legend-row .dot{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; }
-.view-toggle{ display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--muted); margin-bottom:10px; }
+.view-toggle{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted); margin-bottom:10px; }
 .mini-toggle{
-  font-family:var(--mono); font-size:11px; padding:4px 10px; border-radius:14px; cursor:pointer;
+  font-family:var(--mono); font-size:12px; padding:4px 10px; border-radius:14px; cursor:pointer;
   border:1px solid var(--line); background:transparent; color:var(--muted); transition:.2s var(--ease);
 }
 .mini-toggle.active{ background:var(--gold-dim); color:#211705; border-color:var(--gold); font-weight:600; }
@@ -231,9 +231,9 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
 }
 .risk-item.safe .risk-rank{ background:var(--teal); }
 .risk-body{ flex:1; }
-.risk-title{ font-size:12.5px; font-weight:600; }
-.risk-sub{ font-size:11px; color:var(--muted); font-family:var(--mono); }
-.risk-rate{ font-family:var(--mono); font-weight:700; font-size:15px; }
+.risk-title{ font-size:13.5px; font-weight:600; }
+.risk-sub{ font-size:12px; color:var(--muted); font-family:var(--mono); }
+.risk-rate{ font-family:var(--mono); font-weight:700; font-size:16.5px; }
 
 /* Employee cards */
 .employee-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:6px; }
@@ -246,14 +246,14 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
 .employee-card.high{ border-left:3px solid var(--red); }
 .employee-card.low{ border-left:3px solid var(--teal); }
 .employee-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-.employee-head .tag{ font-family:var(--mono); font-size:11px; padding:3px 9px; border-radius:12px; }
+.employee-head .tag{ font-family:var(--mono); font-size:12px; padding:3px 9px; border-radius:12px; }
 .employee-card.high .tag{ background:rgba(232,97,90,.15); color:var(--red); }
 .employee-card.low .tag{ background:rgba(47,212,192,.15); color:var(--teal); }
 .prob-bar-track{ height:8px; border-radius:6px; background:var(--panel-2); overflow:hidden; margin:8px 0 12px; }
 .prob-bar-fill{ height:100%; border-radius:6px; transition:width 1s var(--ease); }
 .feature-chip-row{ display:flex; flex-wrap:wrap; gap:6px; }
 .feature-chip{
-  font-family:var(--mono); font-size:10.5px; padding:3px 8px; border-radius:6px;
+  font-family:var(--mono); font-size:11.5px; padding:4px 9px; border-radius:6px;
   background:var(--panel-2); border:1px solid var(--line); color:var(--text);
 }
 
@@ -289,13 +289,29 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
 
 /* Live status pill */
 .live-tag{
-  display:inline-flex; align-items:center; gap:5px; font-family:var(--mono); font-size:10px;
+  display:inline-flex; align-items:center; gap:5px; font-family:var(--mono); font-size:11.5px;
   color:var(--gold-soft); letter-spacing:.08em; text-transform:uppercase; margin-left:10px;
 }
 .live-tag .live-dot{
   width:6px; height:6px; border-radius:50%; background:#4ADE80;
   box-shadow:0 0 0 0 rgba(74,222,128,.6); animation:pulseDot 1.6s var(--ease) infinite;
 }
+
+/* Confusion matrix heatmap */
+.heatmap-grid{
+  display:grid; grid-template-columns:auto repeat(2,1fr); gap:6px; max-width:420px; margin-top:10px;
+}
+.heatmap-grid .hm-label{
+  display:flex; align-items:center; justify-content:center; font-family:var(--mono);
+  font-size:11px; color:var(--muted); padding:6px;
+}
+.heatmap-cell{
+  border-radius:8px; padding:18px 10px; text-align:center; transition:transform .2s var(--ease);
+  font-family:var(--mono);
+}
+.heatmap-cell:hover{ transform:scale(1.04); }
+.heatmap-cell .hc-val{ font-size:26px; font-weight:700; }
+.heatmap-cell .hc-lbl{ font-size:10.5px; color:rgba(255,255,255,.75); margin-top:4px; text-transform:uppercase; letter-spacing:.04em; }
 
 @media (max-width:1000px){
   .kpi-row{grid-template-columns:repeat(2,1fr);}
@@ -364,6 +380,32 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
   <h2>Sample Employee Explanations</h2>
   <div class="desc">Two real test-set employees, picked at the extremes of predicted risk, with the features that most influenced their score (from Chapter 3's SHAP analysis).</div>
   <div class="employee-grid" id="employeeCards"></div>
+</div>
+
+<div class="grid">
+  <div class="panel reveal">
+    <h2>Attrition Rate by Tenure</h2>
+    <div class="desc">Risk isn't flat across an employee's lifecycle — trace how attrition rate moves as tenure increases.</div>
+    <canvas id="tenureChart" height="230"></canvas>
+  </div>
+  <div class="panel reveal">
+    <h2>Model Profile — Phase III vs. External Dataset</h2>
+    <div class="desc">Same four metrics as the table below, shown as a shape so gaps between the two runs are easier to spot at a glance.</div>
+    <canvas id="radarChart" height="230"></canvas>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel reveal">
+    <h2>Confusion Matrix Heatmap</h2>
+    <div class="desc">Phase III reproduction, 343-employee held-out test set. Darker = more employees in that cell.</div>
+    <div id="confusionHeatmap"></div>
+  </div>
+  <div class="panel reveal">
+    <h2>Segment Landscape</h2>
+    <div class="desc">Every employee segment across all 11 dimensions, plotted by sample size (x) and attrition rate (y). Bubble size = sample size. Segments in the upper-right are both large and high-risk — the ones worth acting on first.</div>
+    <canvas id="scatterChart" height="230"></canvas>
+  </div>
 </div>
 
 <div class="grid">
@@ -627,6 +669,133 @@ function employeeCard(ex, kind){
 }
 document.getElementById("employeeCards").innerHTML =
   employeeCard(empEx.high_risk, "high") + employeeCard(empEx.low_risk, "low");
+
+// ---------- Tenure trend line chart ----------
+const tenureRows = DATA.dashboard.by_yearsatcompany;
+const tenureCtx = document.getElementById("tenureChart").getContext("2d");
+new Chart(tenureCtx, {
+  type:"line",
+  data:{
+    labels: tenureRows.map(r=>r.YearsAtCompany_grp+" yrs"),
+    datasets:[{
+      label:"Attrition rate (%)",
+      data: tenureRows.map(r=>r.mean),
+      borderColor:"#D9A954", backgroundColor:"rgba(217,169,84,.15)",
+      fill:true, tension:.35, pointRadius:4, pointBackgroundColor:"#D9A954", pointBorderColor:"#211705", pointBorderWidth:2,
+    }]
+  },
+  options:{
+    animation:{ duration:700, easing:"easeOutCubic" },
+    plugins:{ legend:{display:false},
+      tooltip:{ callbacks:{ afterLabel:(c)=> "n = "+tenureRows[c.dataIndex].count } } },
+    scales:{
+      x:{ ticks:{color:"#ADA2C0", font:{family:"IBM Plex Mono", size:11}}, grid:{color:"#2C2438"} },
+      y:{ ticks:{color:"#ADA2C0"}, grid:{color:"#2C2438"}, title:{display:true, text:"Attrition rate (%)", color:"#ADA2C0"} }
+    }
+  }
+});
+
+// ---------- Model profile radar chart ----------
+const radarCtx = document.getElementById("radarChart").getContext("2d");
+new Chart(radarCtx, {
+  type:"radar",
+  data:{
+    labels:["CV ROC-AUC","Test ROC-AUC","Test Accuracy","Test F1"],
+    datasets:[
+      {
+        label:"Phase III (IBM HR)",
+        data:[DATA.phase3_model.cv_roc_auc*100, DATA.phase3_model.test_roc_auc*100, DATA.phase3_model.test_accuracy*100, DATA.phase3_model.test_f1*100],
+        borderColor:"#2FD4C0", backgroundColor:"rgba(47,212,192,.15)", pointBackgroundColor:"#2FD4C0",
+      },
+      {
+        label:"External validation",
+        data:[DATA.external_validation.cv_roc_auc*100, DATA.external_validation.test_roc_auc*100, DATA.external_validation.test_accuracy*100, DATA.external_validation.test_f1*100],
+        borderColor:"#D9A954", backgroundColor:"rgba(217,169,84,.15)", pointBackgroundColor:"#D9A954",
+      }
+    ]
+  },
+  options:{
+    animation:{ duration:700, easing:"easeOutCubic" },
+    plugins:{ legend:{ position:"bottom", labels:{ color:"#F1ECE4", font:{family:"IBM Plex Mono", size:11}, padding:14 } } },
+    scales:{ r:{
+      min:80, max:100,
+      angleLines:{ color:"#2C2438" }, grid:{ color:"#2C2438" },
+      pointLabels:{ color:"#ADA2C0", font:{ family:"IBM Plex Mono", size:10.5 } },
+      ticks:{ color:"#7A6E90", backdropColor:"transparent", font:{size:9} }
+    }}
+  }
+});
+
+// ---------- Confusion matrix heatmap ----------
+(function(){
+  const cm = DATA.phase3_model.confusion_matrix; // [[TN,FP],[FN,TP]]
+  const [[tn,fp],[fn,tp]] = cm;
+  const maxV = Math.max(tn,fp,fn,tp);
+  function shade(v){
+    const t = v / maxV;
+    const r = Math.round(23 + t*(217-23));
+    const g = Math.round(20 + t*(169-20));
+    const b = Math.round(32 + t*(84-32));
+    return `rgb(${r},${g},${b})`;
+  }
+  function textColor(v){ return (v/maxV) > 0.55 ? "#211705" : "#F1ECE4"; }
+  const cells = [
+    {v:tn, lbl:"True Negative — correctly predicted stayed"},
+    {v:fp, lbl:"False Positive — flagged, but stayed"},
+    {v:fn, lbl:"False Negative — missed, but left"},
+    {v:tp, lbl:"True Positive — correctly predicted left"},
+  ];
+  const grid = document.getElementById("confusionHeatmap");
+  grid.innerHTML = `
+    <div class="heatmap-grid">
+      <div></div>
+      <div class="hm-label">Predicted: Stay</div>
+      <div class="hm-label">Predicted: Leave</div>
+
+      <div class="hm-label">Actual: Stay</div>
+      <div class="heatmap-cell" style="background:${shade(cells[0].v)}; color:${textColor(cells[0].v)}"><div class="hc-val">${cells[0].v}</div><div class="hc-lbl">${cells[0].lbl}</div></div>
+      <div class="heatmap-cell" style="background:${shade(cells[1].v)}; color:${textColor(cells[1].v)}"><div class="hc-val">${cells[1].v}</div><div class="hc-lbl">${cells[1].lbl}</div></div>
+
+      <div class="hm-label">Actual: Leave</div>
+      <div class="heatmap-cell" style="background:${shade(cells[2].v)}; color:${textColor(cells[2].v)}"><div class="hc-val">${cells[2].v}</div><div class="hc-lbl">${cells[2].lbl}</div></div>
+      <div class="heatmap-cell" style="background:${shade(cells[3].v)}; color:${textColor(cells[3].v)}"><div class="hc-val">${cells[3].v}</div><div class="hc-lbl">${cells[3].lbl}</div></div>
+    </div>`;
+})();
+
+// ---------- Segment landscape scatter ----------
+(function(){
+  const dimMap = {
+    by_department:"Department", by_jobrole:"JobRole", by_overtime:"OverTime",
+    by_worklifebalance:"WorkLifeBalance", by_joblevel:"JobLevel", by_maritalstatus:"MaritalStatus",
+    by_businesstravel:"BusinessTravel", by_stockoption:"StockOptionLevel", by_agegroup:"Age_grp",
+    by_training:"TrainingTimesLastYear", by_yearsatcompany:"YearsAtCompany_grp"
+  };
+  const points = [];
+  Object.entries(dimMap).forEach(([key, catField])=>{
+    (DATA.dashboard[key]||[]).forEach(row=>{
+      points.push({ x: row.count, y: row.mean, label: String(row[catField]), dim: key.replace("by_","") });
+    });
+  });
+  const scatterCtx = document.getElementById("scatterChart").getContext("2d");
+  new Chart(scatterCtx, {
+    type:"bubble",
+    data:{ datasets:[{
+      data: points.map(p=>({ x:p.x, y:p.y, r: Math.max(4, Math.sqrt(p.x)*1.6) })),
+      backgroundColor: points.map(p=> p.y>25?"rgba(232,97,90,.55)": p.y>15?"rgba(240,169,58,.55)":"rgba(47,212,192,.5)"),
+      borderColor: points.map(p=> p.y>25?"#E8615A": p.y>15?"#F0A93A":"#2FD4C0"),
+      borderWidth:1,
+    }]},
+    options:{
+      animation:{ duration:700, easing:"easeOutCubic" },
+      plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{ label:(c)=>{ const p = points[c.dataIndex]; return `${p.label} (${p.dim}): ${p.y}% attrition, n=${p.x}`; } } } },
+      scales:{
+        x:{ title:{display:true, text:"Segment size (employees)", color:"#ADA2C0"}, ticks:{color:"#ADA2C0"}, grid:{color:"#2C2438"} },
+        y:{ title:{display:true, text:"Attrition rate (%)", color:"#ADA2C0"}, ticks:{color:"#ADA2C0"}, grid:{color:"#2C2438"} }
+      }
+    }
+  });
+})();
 
 // ---------- Metrics table ----------
 const rowsDef = [
