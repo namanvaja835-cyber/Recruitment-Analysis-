@@ -257,6 +257,46 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
   background:var(--panel-2); border:1px solid var(--line); color:var(--text);
 }
 
+/* Cursor-reactive spotlight on panels */
+.panel{ position:relative; overflow:hidden; }
+.panel::before{
+  content:""; position:absolute; inset:0; pointer-events:none; opacity:0;
+  background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%), rgba(217,169,84,.10), transparent 70%);
+  transition:opacity .3s var(--ease); z-index:0;
+}
+.panel:hover::before{ opacity:1; }
+.panel > *{ position:relative; z-index:1; }
+
+/* Ripple click effect */
+.ripple{
+  position:absolute; border-radius:50%; pointer-events:none;
+  background:rgba(217,169,84,.45); transform:scale(0); opacity:1;
+  animation:rippleAnim .6s var(--ease) forwards;
+}
+@keyframes rippleAnim{ to{ transform:scale(1); opacity:0; } }
+.pill, .mini-toggle{ position:relative; overflow:hidden; }
+
+/* Scroll reveal */
+.reveal{ opacity:0; transform:translateY(18px); transition:opacity .6s var(--ease), transform .6s var(--ease); }
+.reveal.in-view{ opacity:1; transform:translateY(0); }
+
+/* Auto-cycling spotlight on risk segments */
+.risk-item.spotlight{
+  background:linear-gradient(90deg, rgba(217,169,84,.10), transparent);
+  border-radius:8px; padding-left:6px; margin-left:-6px;
+  box-shadow:inset 2px 0 0 var(--gold);
+}
+
+/* Live status pill */
+.live-tag{
+  display:inline-flex; align-items:center; gap:5px; font-family:var(--mono); font-size:10px;
+  color:var(--gold-soft); letter-spacing:.08em; text-transform:uppercase; margin-left:10px;
+}
+.live-tag .live-dot{
+  width:6px; height:6px; border-radius:50%; background:#4ADE80;
+  box-shadow:0 0 0 0 rgba(74,222,128,.6); animation:pulseDot 1.6s var(--ease) infinite;
+}
+
 @media (max-width:1000px){
   .kpi-row{grid-template-columns:repeat(2,1fr);}
   .grid, .sim-grid{grid-template-columns:1fr;}
@@ -271,7 +311,10 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
     <h1>Attrition Analytics &amp; Explainability Dashboard</h1>
     <p>Live exploration layer built on the Phase II LightGBM pipeline, re-executed for Phase III with SHAP explainability and a second-dataset generalisation check. Data below is computed directly from the 1,470-employee IBM HR Analytics dataset.</p>
   </div>
-  <div class="badge">Naman Vaja · PGDM25246 · ISBR</div>
+  <div>
+    <div class="badge">Naman Vaja · PGDM25246 · ISBR</div>
+    <span class="live-tag"><span class="live-dot"></span>Live data</span>
+  </div>
 </header>
 
 <div class="kpi-row" id="kpiRow"></div>
@@ -279,7 +322,7 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
 <div class="insight-strip" id="insightStrip"></div>
 
 <div class="grid">
-  <div class="panel">
+  <div class="panel reveal">
     <h2>Attrition Driver Explorer</h2>
     <div class="desc">Select a dimension to see how attrition rate varies across employee segments. All figures computed from the raw dataset (n = 1,470).</div>
     <div class="pill-row" id="pillRow"></div>
@@ -296,7 +339,7 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
     </div>
   </div>
 
-  <div class="panel">
+  <div class="panel reveal">
     <h2>Global Feature Importance (SHAP)</h2>
     <div class="desc">Mean absolute SHAP value per feature — the LightGBM model's own account of what drives its predictions, averaged across the held-out test set.</div>
     <canvas id="shapChart" height="270"></canvas>
@@ -304,27 +347,27 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
 </div>
 
 <div class="grid">
-  <div class="panel">
+  <div class="panel reveal">
     <h2>Workforce Composition</h2>
     <div class="desc">Overall headcount split between retained and attrited employees.</div>
     <canvas id="compChart" height="220"></canvas>
   </div>
 
-  <div class="panel">
+  <div class="panel reveal">
     <h2>Top Risk Segments</h2>
     <div class="desc">Highest attrition-rate segments across all dimensions (minimum 30 employees per segment, to avoid noisy small samples).</div>
     <div id="riskSegments"></div>
   </div>
 </div>
 
-<div class="panel full">
+<div class="panel full reveal">
   <h2>Sample Employee Explanations</h2>
   <div class="desc">Two real test-set employees, picked at the extremes of predicted risk, with the features that most influenced their score (from Chapter 3's SHAP analysis).</div>
   <div class="employee-grid" id="employeeCards"></div>
 </div>
 
 <div class="grid">
-  <div class="panel full">
+  <div class="panel full reveal">
     <h2>Model Performance — Phase II vs. Phase III Reproduction vs. External Dataset</h2>
     <div class="desc">Phase II figures are as originally reported. Phase III columns are freshly re-executed under the same SMOTE / feature-selection / LightGBM pipeline for SHAP analysis and external validation purposes — see Chapter 5 of the Phase III report for why exact figures shift slightly on re-run.</div>
     <table>
@@ -334,7 +377,7 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
   </div>
 </div>
 
-<div class="panel full">
+<div class="panel full reveal">
   <h2>Illustrative Attrition Risk Simulator</h2>
   <div class="desc">Adjust an employee's profile on the six most influential SHAP drivers to see how the directional risk band moves. This is a simplified, weighted illustration of SHAP direction for intuition-building only — it is <b>not</b> the trained LightGBM model's output and should not be used for any real HR decision.</div>
   <div class="sim-grid">
@@ -612,6 +655,8 @@ function updateLabels(){
 }
 
 let gaugeChart;
+let gaugeCurrentValue = 0;
+let gaugeAnimFrame = null;
 function computeRisk(){
   const overtime = document.getElementById("overtime").checked ? 1:0;
   const stock = +document.getElementById("stock").value;
@@ -633,25 +678,96 @@ function computeRisk(){
   const band = score >= 60 ? {t:"High risk", c:"#E8615A"} : score >= 32 ? {t:"Moderate risk", c:"#F0A93A"} : {t:"Low risk", c:"#2FD4C0"};
 
   const gv = document.getElementById("gaugeValue");
-  gv.textContent = score.toFixed(0)+"%";
   gv.style.color = band.c;
-  gv.style.animation = "none"; void gv.offsetWidth; gv.style.animation = "";
   const bandEl = document.getElementById("gaugeBand");
   bandEl.textContent = band.t;
   bandEl.style.background = band.c+"22";
   bandEl.style.color = band.c;
 
+  // Animate the number counting from its current value to the new score, instead of snapping
+  if(gaugeAnimFrame) cancelAnimationFrame(gaugeAnimFrame);
+  const from = gaugeCurrentValue, to = score, dur = 450, start = performance.now();
+  function tick(now){
+    const p = Math.min(1, (now-start)/dur);
+    const eased = 1 - Math.pow(1-p, 3);
+    const shown = from + (to-from)*eased;
+    gv.textContent = Math.round(shown) + "%";
+    if(p < 1){ gaugeAnimFrame = requestAnimationFrame(tick); }
+    else { gaugeCurrentValue = to; }
+  }
+  gaugeAnimFrame = requestAnimationFrame(tick);
+
   if(gaugeChart) gaugeChart.destroy();
   const ctx = document.getElementById("gaugeChart").getContext("2d");
   gaugeChart = new Chart(ctx, {
     type:"doughnut",
-    data:{ datasets:[{ data:[score, 100-score], backgroundColor:[band.c, "#182838"], borderWidth:0 }]},
-    options:{ circumference:180, rotation:270, cutout:"75%", plugins:{legend:{display:false}, tooltip:{enabled:false}} }
+    data:{ datasets:[{ data:[score, 100-score], backgroundColor:[band.c, "#211705"], borderWidth:0 }]},
+    options:{ circumference:180, rotation:270, cutout:"75%", animation:{ duration:450, easing:"easeOutCubic" }, plugins:{legend:{display:false}, tooltip:{enabled:false}} }
   });
 }
 ids.forEach(id=> document.getElementById(id).addEventListener("input", ()=>{ updateLabels(); computeRisk(); }));
 updateLabels();
 computeRisk();
+
+// ---------- Cursor-reactive spotlight on panels ----------
+document.querySelectorAll(".panel").forEach(panel=>{
+  panel.addEventListener("mousemove", (e)=>{
+    const r = panel.getBoundingClientRect();
+    panel.style.setProperty("--mx", (e.clientX - r.left) + "px");
+    panel.style.setProperty("--my", (e.clientY - r.top) + "px");
+  });
+});
+
+// ---------- Ripple click effect on pills / toggles ----------
+document.querySelectorAll(".pill, .mini-toggle").forEach(el=>{
+  el.addEventListener("click", function(e){
+    const r = this.getBoundingClientRect();
+    const size = Math.max(r.width, r.height) * 1.6;
+    const span = document.createElement("span");
+    span.className = "ripple";
+    span.style.width = span.style.height = size + "px";
+    span.style.left = (e.clientX - r.left - size/2) + "px";
+    span.style.top = (e.clientY - r.top - size/2) + "px";
+    this.appendChild(span);
+    setTimeout(()=> span.remove(), 650);
+  });
+});
+
+// ---------- Scroll-reveal for panels below the fold ----------
+if("IntersectionObserver" in window){
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        entry.target.classList.add("in-view");
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold:0.12 });
+  document.querySelectorAll(".reveal").forEach(el=> io.observe(el));
+} else {
+  document.querySelectorAll(".reveal").forEach(el=> el.classList.add("in-view"));
+}
+
+// ---------- Auto-cycling spotlight through Top Risk Segments ----------
+(function(){
+  const items = () => [...document.querySelectorAll("#riskSegments .risk-item:not(.safe)")];
+  let idx = 0, paused = false, timer = null;
+  function tickSpotlight(){
+    if(paused) return;
+    const list = items();
+    if(!list.length) return;
+    list.forEach(el=> el.classList.remove("spotlight"));
+    list[idx % list.length].classList.add("spotlight");
+    idx++;
+  }
+  const riskEl = document.getElementById("riskSegments");
+  if(riskEl){
+    riskEl.addEventListener("mouseenter", ()=> paused = true);
+    riskEl.addEventListener("mouseleave", ()=> paused = false);
+    tickSpotlight();
+    timer = setInterval(tickSpotlight, 2400);
+  }
+})();
 } catch (err) {
   console.error("Dashboard failed to initialize:", err);
   document.body.insertAdjacentHTML("afterbegin",
@@ -663,250 +779,3 @@ computeRisk();
 </script>
 </body>
 </html>
-/* Phase III Attrition Analytics Dashboard — Stylesheet
-   Warm charcoal-plum theme: gold brand accent (chrome/nav), teal/amber/red reserved for risk semantics.
-   Serif headlines (Iowan Old Style/Georgia) + clean sans body + IBM Plex Mono for data.
-   Extracted from Phase3_Interactive_Dashboard.html for standalone reference/reuse. */
-
-:root{
-  --bg:#100D14;
-  --bg-2:#181320;
-  --panel:#1C1727;
-  --panel-2:#171220;
-  --line:#2C2438;
-  --gold:#D9A954;
-  --gold-soft:#F0CE8E;
-  --gold-dim:#8C6B2E;
-  --teal:#2FD4C0;
-  --teal-dim:#1B8A7D;
-  --amber:#F0A93A;
-  --red:#E8615A;
-  --text:#F1ECE4;
-  --muted:#9C90A8;
-  --mono:'IBM Plex Mono', 'SF Mono', 'Courier New', monospace;
-  --sans:'Segoe UI', -apple-system, 'Helvetica Neue', Arial, sans-serif;
-  --serif:'Iowan Old Style', 'Palatino Linotype', Georgia, 'Times New Roman', serif;
-  --ease:cubic-bezier(.16,.84,.44,1);
-}
-*{box-sizing:border-box;}
-html{ scroll-behavior:smooth; }
-body{
-  margin:0; color:var(--text); font-family:var(--sans);
-  padding:28px 32px 60px;
-  background:
-    radial-gradient(1px 1px at 20px 30px, rgba(255,255,255,.025) 100%, transparent),
-    radial-gradient(1px 1px at 75px 90px, rgba(255,255,255,.02) 100%, transparent),
-    radial-gradient(1px 1px at 130px 55px, rgba(255,255,255,.025) 100%, transparent),
-    radial-gradient(1100px 520px at 88% -8%, rgba(217,169,84,.10), transparent 60%),
-    radial-gradient(900px 520px at -8% 8%, rgba(47,212,192,.07), transparent 55%),
-    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
-  background-attachment:fixed;
-  background-size:auto, auto, auto, auto, auto, auto;
-}
-::selection{ background:var(--gold); color:#211705; }
-::-webkit-scrollbar{ width:10px; height:10px; }
-::-webkit-scrollbar-track{ background:var(--bg-2); }
-::-webkit-scrollbar-thumb{ background:var(--line); border-radius:20px; }
-::-webkit-scrollbar-thumb:hover{ background:var(--gold-dim); }
-
-h1,h2,h3{ font-family:var(--serif); font-weight:600; margin:0;}
-.eyebrow{
-  font-family:var(--mono); letter-spacing:.14em; text-transform:uppercase;
-  font-size:11px; color:var(--gold-soft); margin-bottom:6px;
-  display:flex; align-items:center; gap:8px;
-}
-.eyebrow::before{
-  content:""; width:7px; height:7px; border-radius:50%; background:var(--gold);
-  box-shadow:0 0 0 0 rgba(217,169,84,.6); animation:pulseDot 2.2s var(--ease) infinite;
-}
-@keyframes pulseDot{
-  0%{ box-shadow:0 0 0 0 rgba(217,169,84,.55); }
-  70%{ box-shadow:0 0 0 8px rgba(217,169,84,0); }
-  100%{ box-shadow:0 0 0 0 rgba(217,169,84,0); }
-}
-header.top{
-  display:flex; justify-content:space-between; align-items:flex-end;
-  border-bottom:1px solid var(--line); padding-bottom:18px; margin-bottom:22px; flex-wrap:wrap; gap:14px;
-  animation:fadeInUp .5s var(--ease) both;
-}
-header.top h1{ font-size:28px; letter-spacing:-.01em; font-style:italic;}
-header.top p{ margin:6px 0 0; color:var(--muted); font-size:13px; max-width:560px;}
-.badge{
-  font-family:var(--mono); font-size:11px; padding:5px 10px; border:1px solid var(--gold-dim);
-  border-radius:20px; color:var(--gold-soft); white-space:nowrap; transition:.25s var(--ease);
-}
-.badge:hover{ background:rgba(217,169,84,.1); box-shadow:0 0 0 3px rgba(217,169,84,.12); }
-
-@keyframes fadeInUp{
-  from{ opacity:0; transform:translateY(10px); }
-  to{ opacity:1; transform:translateY(0); }
-}
-
-.kpi-row{ display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:26px;}
-.kpi{
-  position:relative; overflow:hidden;
-  background:linear-gradient(160deg, var(--panel) 0%, var(--panel-2) 100%);
-  border:1px solid var(--line); border-radius:10px; padding:16px 18px;
-  transition:transform .25s var(--ease), border-color .25s var(--ease), box-shadow .25s var(--ease);
-  animation:fadeInUp .5s var(--ease) both;
-}
-.kpi::before{
-  content:""; position:absolute; top:0; left:0; right:0; height:2px;
-  background:linear-gradient(90deg, var(--gold), transparent);
-  transform:scaleX(0); transform-origin:left; transition:transform .35s var(--ease);
-}
-.kpi:hover{ transform:translateY(-3px); border-color:var(--gold-dim); box-shadow:0 12px 24px -12px rgba(0,0,0,.5); }
-.kpi:hover::before{ transform:scaleX(1); }
-.kpi:nth-child(1){animation-delay:.03s;} .kpi:nth-child(2){animation-delay:.08s;}
-.kpi:nth-child(3){animation-delay:.13s;} .kpi:nth-child(4){animation-delay:.18s;}
-.kpi:nth-child(5){animation-delay:.23s;}
-.kpi .label{ font-size:11px; color:var(--muted); font-family:var(--mono); text-transform:uppercase; letter-spacing:.06em;}
-.kpi .value{ font-size:26px; font-weight:700; margin-top:6px; font-family:var(--mono); transition:color .2s; }
-.kpi .sub{ font-size:11px; color:var(--muted); margin-top:4px;}
-.teal{color:var(--teal);} .amber{color:var(--amber);} .red{color:var(--red);}
-
-.grid{ display:grid; grid-template-columns:1.3fr 1fr; gap:18px; margin-bottom:18px;}
-.panel{
-  background:linear-gradient(160deg, var(--panel) 0%, var(--panel-2) 100%);
-  border:1px solid var(--line); border-radius:12px; padding:20px 22px;
-  transition:border-color .3s var(--ease), box-shadow .3s var(--ease);
-  animation:fadeInUp .55s var(--ease) both;
-}
-.panel:hover{ border-color:#3A2E4A; box-shadow:0 16px 32px -20px rgba(0,0,0,.6); }
-.panel h2{ font-size:17px; margin-bottom:4px; position:relative; display:inline-block; font-style:italic; }
-.panel h2::after{
-  content:""; position:absolute; left:0; bottom:-4px; height:2px; width:28px;
-  background:var(--gold); border-radius:2px;
-}
-.panel .desc{ font-size:12px; color:var(--muted); margin-bottom:14px; margin-top:10px;}
-.pill-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
-.pill{
-  font-family:var(--mono); font-size:11.5px; padding:6px 12px; border-radius:20px; cursor:pointer;
-  border:1px solid var(--line); background:var(--panel-2); color:var(--muted);
-  transition:transform .18s var(--ease), background .2s, color .2s, border-color .2s, box-shadow .2s;
-}
-.pill.active{ background:var(--gold-dim); color:#211705; border-color:var(--gold); font-weight:600; box-shadow:0 4px 14px -4px rgba(217,169,84,.5); }
-.pill:hover{ border-color:var(--gold); color:var(--text); transform:translateY(-1px); }
-.pill:active{ transform:translateY(0) scale(.97); }
-canvas{max-width:100%;}
-.full{ grid-column:1 / -1;}
-
-table{ width:100%; border-collapse:collapse; font-size:12.5px;}
-th,td{ text-align:left; padding:9px 10px; border-bottom:1px solid var(--line);}
-th{ color:var(--muted); font-family:var(--mono); font-weight:500; text-transform:uppercase; font-size:10.5px; letter-spacing:.05em;}
-td.num{ font-family:var(--mono); text-align:right; font-variant-numeric:tabular-nums;}
-tr{ transition:background .18s var(--ease); }
-tr:hover td{ background:rgba(217,169,84,.06); }
-tr.hl td{ color:var(--gold-soft); font-weight:600;}
-
-.sim-grid{ display:grid; grid-template-columns:1fr 1fr; gap:26px; align-items:center;}
-.control{ margin-bottom:16px;}
-.control label{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--muted); margin-bottom:6px;}
-.control label span.v{ color:var(--text); font-family:var(--mono); transition:color .2s; }
-
-/* custom range slider */
-input[type=range]{
-  -webkit-appearance:none; appearance:none; width:100%; height:5px; border-radius:8px;
-  background:linear-gradient(90deg, var(--gold-dim), var(--line)); outline:none; cursor:pointer;
-}
-input[type=range]::-webkit-slider-thumb{
-  -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
-  background:var(--gold); border:3px solid #211705; cursor:pointer;
-  box-shadow:0 0 0 3px rgba(217,169,84,.2); transition:transform .15s var(--ease), box-shadow .15s;
-}
-input[type=range]::-webkit-slider-thumb:hover{ transform:scale(1.15); box-shadow:0 0 0 6px rgba(217,169,84,.24); }
-input[type=range]::-moz-range-thumb{
-  width:16px; height:16px; border-radius:50%; background:var(--gold); border:3px solid #211705; cursor:pointer;
-}
-
-/* custom checkbox -> toggle switch */
-input[type=checkbox]{
-  -webkit-appearance:none; appearance:none; width:40px; height:22px; border-radius:20px;
-  background:var(--panel-2); border:1px solid var(--line); position:relative; cursor:pointer;
-  transition:background .25s var(--ease), border-color .25s var(--ease); vertical-align:middle;
-}
-input[type=checkbox]::before{
-  content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%;
-  background:var(--muted); transition:transform .25s var(--ease), background .25s var(--ease);
-}
-input[type=checkbox]:checked{ background:var(--gold-dim); border-color:var(--gold); }
-input[type=checkbox]:checked::before{ transform:translateX(18px); background:#211705; }
-
-select{ accent-color:var(--gold); }
-:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; border-radius:4px; }
-
-.toggle-row{ display:flex; align-items:center; justify-content:space-between; font-size:12.5px; color:var(--muted); padding:8px 0; border-bottom:1px dashed var(--line);}
-.gauge-wrap{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;}
-.gauge-label{ font-family:var(--mono); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em;}
-.gauge-value{ font-size:44px; font-weight:700; font-family:var(--mono); transition:color .3s var(--ease); animation:popIn .3s var(--ease); }
-@keyframes popIn{ from{ transform:scale(.9); opacity:.4; } to{ transform:scale(1); opacity:1; } }
-.gauge-band{ font-size:13px; font-weight:600; padding:4px 14px; border-radius:20px; transition:.3s var(--ease); }
-.note{ font-size:11px; color:var(--muted); text-align:center; max-width:320px; margin-top:6px;}
-
-footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; color:var(--muted); font-size:11px; font-family:var(--mono);}
-
-/* Insight strip */
-.insight-strip{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:22px; }
-.insight-card{
-  background:linear-gradient(160deg, rgba(217,169,84,.09), rgba(217,169,84,.02));
-  border:1px solid var(--gold-dim); border-radius:10px; padding:14px 16px;
-  font-size:12.5px; line-height:1.5; animation:fadeInUp .5s var(--ease) both;
-  display:flex; gap:10px; align-items:flex-start;
-}
-.insight-card .icon{ font-size:17px; line-height:1; }
-.insight-card b{ color:var(--gold-soft); }
-
-/* Legend + toggle */
-.legend-row{ display:flex; gap:16px; flex-wrap:wrap; margin-top:12px; font-size:11.5px; color:var(--muted); }
-.legend-row .dot{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; }
-.view-toggle{ display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--muted); margin-bottom:10px; }
-.mini-toggle{
-  font-family:var(--mono); font-size:11px; padding:4px 10px; border-radius:14px; cursor:pointer;
-  border:1px solid var(--line); background:transparent; color:var(--muted); transition:.2s var(--ease);
-}
-.mini-toggle.active{ background:var(--gold-dim); color:#211705; border-color:var(--gold); font-weight:600; }
-.mini-toggle:hover{ border-color:var(--gold); color:var(--text); }
-
-/* Risk segment ranked list */
-.risk-item{
-  display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px dashed var(--line);
-  transition:transform .2s var(--ease);
-}
-.risk-item:hover{ transform:translateX(3px); }
-.risk-rank{
-  font-family:var(--mono); font-size:13px; font-weight:700; color:var(--bg);
-  background:var(--red); width:24px; height:24px; border-radius:50%;
-  display:flex; align-items:center; justify-content:center; flex-shrink:0;
-}
-.risk-item.safe .risk-rank{ background:var(--teal); }
-.risk-body{ flex:1; }
-.risk-title{ font-size:12.5px; font-weight:600; }
-.risk-sub{ font-size:11px; color:var(--muted); font-family:var(--mono); }
-.risk-rate{ font-family:var(--mono); font-weight:700; font-size:15px; }
-
-/* Employee cards */
-.employee-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:6px; }
-.employee-card{
-  border:1px solid var(--line); border-radius:10px; padding:16px 18px;
-  background:linear-gradient(160deg, var(--panel) 0%, var(--panel-2) 100%);
-  transition:transform .2s var(--ease), box-shadow .2s var(--ease);
-}
-.employee-card:hover{ transform:translateY(-2px); box-shadow:0 12px 24px -14px rgba(0,0,0,.5); }
-.employee-card.high{ border-left:3px solid var(--red); }
-.employee-card.low{ border-left:3px solid var(--teal); }
-.employee-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-.employee-head .tag{ font-family:var(--mono); font-size:11px; padding:3px 9px; border-radius:12px; }
-.employee-card.high .tag{ background:rgba(232,97,90,.15); color:var(--red); }
-.employee-card.low .tag{ background:rgba(47,212,192,.15); color:var(--teal); }
-.prob-bar-track{ height:8px; border-radius:6px; background:var(--panel-2); overflow:hidden; margin:8px 0 12px; }
-.prob-bar-fill{ height:100%; border-radius:6px; transition:width 1s var(--ease); }
-.feature-chip-row{ display:flex; flex-wrap:wrap; gap:6px; }
-.feature-chip{
-  font-family:var(--mono); font-size:10.5px; padding:3px 8px; border-radius:6px;
-  background:var(--panel-2); border:1px solid var(--line); color:var(--text);
-}
-
-@media (max-width:1000px){
-  .kpi-row{grid-template-columns:repeat(2,1fr);}
-  .grid, .sim-grid{grid-template-columns:1fr;}
-}
