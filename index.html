@@ -312,6 +312,35 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
 .heatmap-cell:hover{ transform:scale(1.04); }
 .heatmap-cell .hc-val{ font-size:26px; font-weight:700; }
 .heatmap-cell .hc-lbl{ font-size:10.5px; color:rgba(255,255,255,.75); margin-top:4px; text-transform:uppercase; letter-spacing:.04em; }
+.heatmap-cell .hc-input{
+  width:64px; background:transparent; border:none; border-bottom:2px dashed rgba(255,255,255,.4);
+  font-family:var(--mono); font-size:26px; font-weight:700; text-align:center; color:inherit;
+  -moz-appearance:textfield;
+}
+.heatmap-cell .hc-input::-webkit-inner-spin-button, .heatmap-cell .hc-input::-webkit-outer-spin-button{
+  -webkit-appearance:none; margin:0;
+}
+.heatmap-cell .hc-input:focus{ outline:none; border-bottom-color:currentColor; }
+
+.derived-metrics{ display:flex; gap:18px; flex-wrap:wrap; margin-top:14px; padding-top:12px; border-top:1px dashed var(--line); }
+.derived-metrics .dm-item{ font-family:var(--mono); font-size:12.5px; color:var(--muted); }
+.derived-metrics .dm-item b{ color:var(--gold-soft); font-size:15px; display:block; margin-top:2px; }
+
+/* Editable chart control rows */
+.edit-row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; padding-top:10px; border-top:1px dashed var(--line); }
+.edit-item{ display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; min-width:56px; }
+.edit-item .ei-label{ font-family:var(--mono); font-size:10px; color:var(--muted); text-align:center; }
+.edit-item .ei-value{ font-family:var(--mono); font-size:11.5px; color:var(--gold-soft); font-weight:600; }
+.edit-item input[type=range]{ writing-mode:vertical-lr; direction:rtl; width:6px; height:70px; }
+
+.add-point-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; padding-top:10px; border-top:1px dashed var(--line); align-items:center; }
+.add-point-row input[type=text], .add-point-row input[type=number]{
+  background:var(--panel-2); border:1px solid var(--line); border-radius:6px; color:var(--text);
+  font-family:var(--mono); font-size:12.5px; padding:6px 9px; transition:border-color .2s;
+}
+.add-point-row input:focus{ outline:none; border-color:var(--gold); }
+.add-point-row input[type=text]{ flex:1; min-width:100px; }
+.add-point-row input[type=number]{ width:70px; }
 
 @media (max-width:1000px){
   .kpi-row{grid-template-columns:repeat(2,1fr);}
@@ -385,28 +414,41 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
 <div class="grid">
   <div class="panel reveal">
     <h2>Attrition Rate by Tenure</h2>
-    <div class="desc">Risk isn't flat across an employee's lifecycle — trace how attrition rate moves as tenure increases.</div>
-    <canvas id="tenureChart" height="230"></canvas>
+    <div class="desc">Risk isn't flat across an employee's lifecycle — trace how attrition rate moves as tenure increases. Drag any slider below to edit that point live.</div>
+    <canvas id="tenureChart" height="200"></canvas>
+    <div class="edit-row" id="tenureEditRow"></div>
+    <button class="mini-toggle" id="tenureReset" style="margin-top:8px;">Reset to real data</button>
   </div>
   <div class="panel reveal">
     <h2>Model Profile — Phase III vs. External Dataset</h2>
-    <div class="desc">Same four metrics as the table below, shown as a shape so gaps between the two runs are easier to spot at a glance.</div>
-    <canvas id="radarChart" height="230"></canvas>
+    <div class="desc">Same four metrics as the table below, shown as a shape so gaps between the two runs are easier to spot at a glance. Drag to edit either dataset live.</div>
+    <canvas id="radarChart" height="200"></canvas>
+    <div class="edit-row" id="radarEditRow"></div>
+    <button class="mini-toggle" id="radarReset" style="margin-top:8px;">Reset to real data</button>
   </div>
 </div>
 
 <div class="grid">
   <div class="panel reveal">
     <h2>Confusion Matrix Heatmap</h2>
-    <div class="desc">Phase III reproduction, 343-employee held-out test set. Darker = more employees in that cell.</div>
+    <div class="desc">Phase III reproduction, 343-employee held-out test set. Darker = more employees in that cell. Click any number to edit it — accuracy, precision, recall and F1 recompute instantly.</div>
     <div id="confusionHeatmap"></div>
+    <div class="derived-metrics" id="derivedMetrics"></div>
+    <button class="mini-toggle" id="cmReset" style="margin-top:10px;">Reset to real data</button>
   </div>
   <div class="panel reveal">
     <h2>Segment Landscape</h2>
-    <div class="desc">Every employee segment across all 11 dimensions, plotted by sample size (x) and attrition rate (y). Bubble size = sample size. Segments in the upper-right are both large and high-risk — the ones worth acting on first.</div>
-    <canvas id="scatterChart" height="230"></canvas>
+    <div class="desc">Every employee segment across all 11 dimensions, plotted by sample size (x) and attrition rate (y). Bubble size = sample size. Add your own hypothetical segment below and watch it drop straight into the plot.</div>
+    <canvas id="scatterChart" height="200"></canvas>
+    <div class="add-point-row">
+      <input type="text" id="segName" placeholder="Segment name" maxlength="24">
+      <input type="number" id="segCount" placeholder="n" min="1" max="1470" value="50">
+      <input type="number" id="segRate" placeholder="rate %" min="0" max="100" value="20" step="0.5">
+      <button class="mini-toggle" id="segAdd">+ Add segment</button>
+    </div>
   </div>
 </div>
+
 
 <div class="grid">
   <div class="panel full reveal">
@@ -670,132 +712,235 @@ function employeeCard(ex, kind){
 document.getElementById("employeeCards").innerHTML =
   employeeCard(empEx.high_risk, "high") + employeeCard(empEx.low_risk, "low");
 
-// ---------- Tenure trend line chart ----------
-const tenureRows = DATA.dashboard.by_yearsatcompany;
+// ---------- Tenure trend line chart (live-editable) ----------
+const tenureRowsOriginal = DATA.dashboard.by_yearsatcompany.map(r=>({...r}));
+let tenureData = tenureRowsOriginal.map(r=>r.mean);
+const tenureLabels = tenureRowsOriginal.map(r=>r.YearsAtCompany_grp+" yrs");
 const tenureCtx = document.getElementById("tenureChart").getContext("2d");
-new Chart(tenureCtx, {
+const tenureChart = new Chart(tenureCtx, {
   type:"line",
   data:{
-    labels: tenureRows.map(r=>r.YearsAtCompany_grp+" yrs"),
+    labels: tenureLabels,
     datasets:[{
       label:"Attrition rate (%)",
-      data: tenureRows.map(r=>r.mean),
+      data: tenureData.slice(),
       borderColor:"#D9A954", backgroundColor:"rgba(217,169,84,.15)",
-      fill:true, tension:.35, pointRadius:4, pointBackgroundColor:"#D9A954", pointBorderColor:"#211705", pointBorderWidth:2,
+      fill:true, tension:.35, pointRadius:4, pointHoverRadius:6, pointBackgroundColor:"#D9A954", pointBorderColor:"#211705", pointBorderWidth:2,
     }]
   },
   options:{
-    animation:{ duration:700, easing:"easeOutCubic" },
+    animation:{ duration:400, easing:"easeOutCubic" },
     plugins:{ legend:{display:false},
-      tooltip:{ callbacks:{ afterLabel:(c)=> "n = "+tenureRows[c.dataIndex].count } } },
+      tooltip:{ callbacks:{ afterLabel:(c)=> "n = "+tenureRowsOriginal[c.dataIndex].count } } },
     scales:{
       x:{ ticks:{color:"#ADA2C0", font:{family:"IBM Plex Mono", size:11}}, grid:{color:"#2C2438"} },
-      y:{ ticks:{color:"#ADA2C0"}, grid:{color:"#2C2438"}, title:{display:true, text:"Attrition rate (%)", color:"#ADA2C0"} }
+      y:{ min:0, max:60, ticks:{color:"#ADA2C0"}, grid:{color:"#2C2438"}, title:{display:true, text:"Attrition rate (%)", color:"#ADA2C0"} }
     }
   }
 });
+function buildTenureEditRow(){
+  const row = document.getElementById("tenureEditRow");
+  row.innerHTML = tenureLabels.map((lbl,i)=>`
+    <div class="edit-item">
+      <input type="range" min="0" max="60" step="0.5" value="${tenureData[i]}" data-i="${i}" class="tenure-slider">
+      <div class="ei-value" id="tenureVal${i}">${tenureData[i].toFixed(1)}%</div>
+      <div class="ei-label">${lbl}</div>
+    </div>`).join("");
+  row.querySelectorAll(".tenure-slider").forEach(sl=>{
+    sl.addEventListener("input", (e)=>{
+      const i = +e.target.dataset.i;
+      const v = +e.target.value;
+      tenureData[i] = v;
+      tenureChart.data.datasets[0].data[i] = v;
+      tenureChart.update("none");
+      document.getElementById("tenureVal"+i).textContent = v.toFixed(1)+"%";
+    });
+  });
+}
+buildTenureEditRow();
+document.getElementById("tenureReset").addEventListener("click", ()=>{
+  tenureData = tenureRowsOriginal.map(r=>r.mean);
+  tenureChart.data.datasets[0].data = tenureData.slice();
+  tenureChart.update();
+  buildTenureEditRow();
+});
 
-// ---------- Model profile radar chart ----------
+// ---------- Model profile radar chart (live-editable) ----------
+const radarOriginal = {
+  p3:[DATA.phase3_model.cv_roc_auc*100, DATA.phase3_model.test_roc_auc*100, DATA.phase3_model.test_accuracy*100, DATA.phase3_model.test_f1*100],
+  ext:[DATA.external_validation.cv_roc_auc*100, DATA.external_validation.test_roc_auc*100, DATA.external_validation.test_accuracy*100, DATA.external_validation.test_f1*100],
+};
+const radarLabels = ["CV ROC-AUC","Test ROC-AUC","Test Accuracy","Test F1"];
+let radarData = { p3: radarOriginal.p3.slice(), ext: radarOriginal.ext.slice() };
 const radarCtx = document.getElementById("radarChart").getContext("2d");
-new Chart(radarCtx, {
+const radarChart = new Chart(radarCtx, {
   type:"radar",
   data:{
-    labels:["CV ROC-AUC","Test ROC-AUC","Test Accuracy","Test F1"],
+    labels: radarLabels,
     datasets:[
-      {
-        label:"Phase III (IBM HR)",
-        data:[DATA.phase3_model.cv_roc_auc*100, DATA.phase3_model.test_roc_auc*100, DATA.phase3_model.test_accuracy*100, DATA.phase3_model.test_f1*100],
-        borderColor:"#2FD4C0", backgroundColor:"rgba(47,212,192,.15)", pointBackgroundColor:"#2FD4C0",
-      },
-      {
-        label:"External validation",
-        data:[DATA.external_validation.cv_roc_auc*100, DATA.external_validation.test_roc_auc*100, DATA.external_validation.test_accuracy*100, DATA.external_validation.test_f1*100],
-        borderColor:"#D9A954", backgroundColor:"rgba(217,169,84,.15)", pointBackgroundColor:"#D9A954",
-      }
+      { label:"Phase III (IBM HR)", data: radarData.p3.slice(), borderColor:"#2FD4C0", backgroundColor:"rgba(47,212,192,.15)", pointBackgroundColor:"#2FD4C0" },
+      { label:"External validation", data: radarData.ext.slice(), borderColor:"#D9A954", backgroundColor:"rgba(217,169,84,.15)", pointBackgroundColor:"#D9A954" }
     ]
   },
   options:{
-    animation:{ duration:700, easing:"easeOutCubic" },
+    animation:{ duration:400, easing:"easeOutCubic" },
     plugins:{ legend:{ position:"bottom", labels:{ color:"#F1ECE4", font:{family:"IBM Plex Mono", size:11}, padding:14 } } },
     scales:{ r:{
-      min:80, max:100,
+      min:50, max:100,
       angleLines:{ color:"#2C2438" }, grid:{ color:"#2C2438" },
       pointLabels:{ color:"#ADA2C0", font:{ family:"IBM Plex Mono", size:10.5 } },
       ticks:{ color:"#7A6E90", backdropColor:"transparent", font:{size:9} }
     }}
   }
 });
+function buildRadarEditRow(){
+  const row = document.getElementById("radarEditRow");
+  const mk = (key, colorVar) => radarLabels.map((lbl,i)=>`
+    <div class="edit-item">
+      <input type="range" min="50" max="100" step="0.1" value="${radarData[key][i]}" data-key="${key}" data-i="${i}" class="radar-slider" style="accent-color:${colorVar}">
+      <div class="ei-value" id="radarVal_${key}_${i}">${radarData[key][i].toFixed(1)}%</div>
+      <div class="ei-label">${lbl.replace(" ROC-AUC","")}<br>${key==="p3"?"Ph.III":"Ext."}</div>
+    </div>`).join("");
+  row.innerHTML = mk("p3","#2FD4C0") + mk("ext","#D9A954");
+  row.querySelectorAll(".radar-slider").forEach(sl=>{
+    sl.addEventListener("input", (e)=>{
+      const key = e.target.dataset.key, i = +e.target.dataset.i, v = +e.target.value;
+      radarData[key][i] = v;
+      radarChart.data.datasets[key==="p3"?0:1].data[i] = v;
+      radarChart.update("none");
+      document.getElementById(`radarVal_${key}_${i}`).textContent = v.toFixed(1)+"%";
+    });
+  });
+}
+buildRadarEditRow();
+document.getElementById("radarReset").addEventListener("click", ()=>{
+  radarData = { p3: radarOriginal.p3.slice(), ext: radarOriginal.ext.slice() };
+  radarChart.data.datasets[0].data = radarData.p3.slice();
+  radarChart.data.datasets[1].data = radarData.ext.slice();
+  radarChart.update();
+  buildRadarEditRow();
+});
 
-// ---------- Confusion matrix heatmap ----------
-(function(){
-  const cm = DATA.phase3_model.confusion_matrix; // [[TN,FP],[FN,TP]]
-  const [[tn,fp],[fn,tp]] = cm;
-  const maxV = Math.max(tn,fp,fn,tp);
-  function shade(v){
-    const t = v / maxV;
-    const r = Math.round(23 + t*(217-23));
-    const g = Math.round(20 + t*(169-20));
-    const b = Math.round(32 + t*(84-32));
-    return `rgb(${r},${g},${b})`;
-  }
-  function textColor(v){ return (v/maxV) > 0.55 ? "#211705" : "#F1ECE4"; }
-  const cells = [
-    {v:tn, lbl:"True Negative — correctly predicted stayed"},
-    {v:fp, lbl:"False Positive — flagged, but stayed"},
-    {v:fn, lbl:"False Negative — missed, but left"},
-    {v:tp, lbl:"True Positive — correctly predicted left"},
-  ];
+// ---------- Confusion matrix heatmap (live-editable) ----------
+const cmOriginal = DATA.phase3_model.confusion_matrix; // [[TN,FP],[FN,TP]]
+let cmValues = { tn:cmOriginal[0][0], fp:cmOriginal[0][1], fn:cmOriginal[1][0], tp:cmOriginal[1][1] };
+function shade(v, maxV){
+  const t = maxV ? v / maxV : 0;
+  const r = Math.round(23 + t*(217-23));
+  const g = Math.round(20 + t*(169-20));
+  const b = Math.round(32 + t*(84-32));
+  return `rgb(${r},${g},${b})`;
+}
+function textColor(v, maxV){ return (maxV ? v/maxV : 0) > 0.55 ? "#211705" : "#F1ECE4"; }
+const cmMeta = [
+  {key:"tn", lbl:"True Negative — correctly predicted stayed"},
+  {key:"fp", lbl:"False Positive — flagged, but stayed"},
+  {key:"fn", lbl:"False Negative — missed, but left"},
+  {key:"tp", lbl:"True Positive — correctly predicted left"},
+];
+function renderConfusionMatrix(){
+  const maxV = Math.max(cmValues.tn, cmValues.fp, cmValues.fn, cmValues.tp);
   const grid = document.getElementById("confusionHeatmap");
   grid.innerHTML = `
     <div class="heatmap-grid">
       <div></div>
       <div class="hm-label">Predicted: Stay</div>
       <div class="hm-label">Predicted: Leave</div>
-
       <div class="hm-label">Actual: Stay</div>
-      <div class="heatmap-cell" style="background:${shade(cells[0].v)}; color:${textColor(cells[0].v)}"><div class="hc-val">${cells[0].v}</div><div class="hc-lbl">${cells[0].lbl}</div></div>
-      <div class="heatmap-cell" style="background:${shade(cells[1].v)}; color:${textColor(cells[1].v)}"><div class="hc-val">${cells[1].v}</div><div class="hc-lbl">${cells[1].lbl}</div></div>
-
+      ${cmMeta.slice(0,2).map(c=>`
+        <div class="heatmap-cell" style="background:${shade(cmValues[c.key],maxV)}; color:${textColor(cmValues[c.key],maxV)}">
+          <input class="hc-input" type="number" min="0" value="${cmValues[c.key]}" data-key="${c.key}">
+          <div class="hc-lbl">${c.lbl}</div>
+        </div>`).join("")}
       <div class="hm-label">Actual: Leave</div>
-      <div class="heatmap-cell" style="background:${shade(cells[2].v)}; color:${textColor(cells[2].v)}"><div class="hc-val">${cells[2].v}</div><div class="hc-lbl">${cells[2].lbl}</div></div>
-      <div class="heatmap-cell" style="background:${shade(cells[3].v)}; color:${textColor(cells[3].v)}"><div class="hc-val">${cells[3].v}</div><div class="hc-lbl">${cells[3].lbl}</div></div>
+      ${cmMeta.slice(2,4).map(c=>`
+        <div class="heatmap-cell" style="background:${shade(cmValues[c.key],maxV)}; color:${textColor(cmValues[c.key],maxV)}">
+          <input class="hc-input" type="number" min="0" value="${cmValues[c.key]}" data-key="${c.key}">
+          <div class="hc-lbl">${c.lbl}</div>
+        </div>`).join("")}
     </div>`;
-})();
-
-// ---------- Segment landscape scatter ----------
-(function(){
-  const dimMap = {
-    by_department:"Department", by_jobrole:"JobRole", by_overtime:"OverTime",
-    by_worklifebalance:"WorkLifeBalance", by_joblevel:"JobLevel", by_maritalstatus:"MaritalStatus",
-    by_businesstravel:"BusinessTravel", by_stockoption:"StockOptionLevel", by_agegroup:"Age_grp",
-    by_training:"TrainingTimesLastYear", by_yearsatcompany:"YearsAtCompany_grp"
-  };
-  const points = [];
-  Object.entries(dimMap).forEach(([key, catField])=>{
-    (DATA.dashboard[key]||[]).forEach(row=>{
-      points.push({ x: row.count, y: row.mean, label: String(row[catField]), dim: key.replace("by_","") });
+  grid.querySelectorAll(".hc-input").forEach(inp=>{
+    inp.addEventListener("input", (e)=>{
+      const v = Math.max(0, +e.target.value || 0);
+      cmValues[e.target.dataset.key] = v;
+      renderConfusionMatrix();
+      renderDerivedMetrics();
+      // restore focus + cursor to the same field after re-render
+      const again = document.querySelector(`.hc-input[data-key="${e.target.dataset.key}"]`);
+      if(again){ again.focus(); }
     });
   });
-  const scatterCtx = document.getElementById("scatterChart").getContext("2d");
-  new Chart(scatterCtx, {
-    type:"bubble",
-    data:{ datasets:[{
-      data: points.map(p=>({ x:p.x, y:p.y, r: Math.max(4, Math.sqrt(p.x)*1.6) })),
-      backgroundColor: points.map(p=> p.y>25?"rgba(232,97,90,.55)": p.y>15?"rgba(240,169,58,.55)":"rgba(47,212,192,.5)"),
-      borderColor: points.map(p=> p.y>25?"#E8615A": p.y>15?"#F0A93A":"#2FD4C0"),
-      borderWidth:1,
-    }]},
-    options:{
-      animation:{ duration:700, easing:"easeOutCubic" },
-      plugins:{ legend:{display:false},
-        tooltip:{ callbacks:{ label:(c)=>{ const p = points[c.dataIndex]; return `${p.label} (${p.dim}): ${p.y}% attrition, n=${p.x}`; } } } },
-      scales:{
-        x:{ title:{display:true, text:"Segment size (employees)", color:"#ADA2C0"}, ticks:{color:"#ADA2C0"}, grid:{color:"#2C2438"} },
-        y:{ title:{display:true, text:"Attrition rate (%)", color:"#ADA2C0"}, ticks:{color:"#ADA2C0"}, grid:{color:"#2C2438"} }
-      }
-    }
+}
+function renderDerivedMetrics(){
+  const {tn,fp,fn,tp} = cmValues;
+  const total = tn+fp+fn+tp;
+  const acc = total ? (tn+tp)/total*100 : 0;
+  const prec = (tp+fp) ? tp/(tp+fp)*100 : 0;
+  const rec = (tp+fn) ? tp/(tp+fn)*100 : 0;
+  const f1 = (prec+rec) ? 2*prec*rec/(prec+rec) : 0;
+  document.getElementById("derivedMetrics").innerHTML = [
+    ["Total", total, ""], ["Accuracy", acc.toFixed(1), "%"], ["Precision", prec.toFixed(1), "%"],
+    ["Recall", rec.toFixed(1), "%"], ["F1 Score", f1.toFixed(1), "%"],
+  ].map(([l,v,s])=>`<div class="dm-item">${l}<b>${v}${s}</b></div>`).join("");
+}
+renderConfusionMatrix();
+renderDerivedMetrics();
+document.getElementById("cmReset").addEventListener("click", ()=>{
+  cmValues = { tn:cmOriginal[0][0], fp:cmOriginal[0][1], fn:cmOriginal[1][0], tp:cmOriginal[1][1] };
+  renderConfusionMatrix();
+  renderDerivedMetrics();
+});
+
+// ---------- Segment landscape scatter (live-editable) ----------
+const scatterDimMap = {
+  by_department:"Department", by_jobrole:"JobRole", by_overtime:"OverTime",
+  by_worklifebalance:"WorkLifeBalance", by_joblevel:"JobLevel", by_maritalstatus:"MaritalStatus",
+  by_businesstravel:"BusinessTravel", by_stockoption:"StockOptionLevel", by_agegroup:"Age_grp",
+  by_training:"TrainingTimesLastYear", by_yearsatcompany:"YearsAtCompany_grp"
+};
+let scatterPoints = [];
+Object.entries(scatterDimMap).forEach(([key, catField])=>{
+  (DATA.dashboard[key]||[]).forEach(row=>{
+    scatterPoints.push({ x: row.count, y: row.mean, label: String(row[catField]), dim: key.replace("by_",""), custom:false });
   });
-})();
+});
+function scatterColor(y, alpha){ return y>25?`rgba(232,97,90,${alpha})`: y>15?`rgba(240,169,58,${alpha})`:`rgba(47,212,192,${alpha})`; }
+function scatterBorder(y){ return y>25?"#E8615A": y>15?"#F0A93A":"#2FD4C0"; }
+const scatterCtx = document.getElementById("scatterChart").getContext("2d");
+const scatterChart = new Chart(scatterCtx, {
+  type:"bubble",
+  data:{ datasets:[{
+    data: scatterPoints.map(p=>({ x:p.x, y:p.y, r: Math.max(4, Math.sqrt(p.x)*1.6) })),
+    backgroundColor: scatterPoints.map(p=> p.custom ? "rgba(217,169,84,.7)" : scatterColor(p.y,.5)),
+    borderColor: scatterPoints.map(p=> p.custom ? "#D9A954" : scatterBorder(p.y)),
+    borderWidth: scatterPoints.map(p=> p.custom ? 2.5 : 1),
+  }]},
+  options:{
+    animation:{ duration:500, easing:"easeOutCubic" },
+    plugins:{ legend:{display:false},
+      tooltip:{ callbacks:{ label:(c)=>{ const p = scatterPoints[c.dataIndex]; return `${p.label}${p.custom?" (custom)":""}: ${p.y}% attrition, n=${p.x}`; } } } },
+    scales:{
+      x:{ title:{display:true, text:"Segment size (employees)", color:"#ADA2C0"}, ticks:{color:"#ADA2C0"}, grid:{color:"#2C2438"} },
+      y:{ title:{display:true, text:"Attrition rate (%)", color:"#ADA2C0"}, ticks:{color:"#ADA2C0"}, grid:{color:"#2C2438"} }
+    }
+  }
+});
+function refreshScatter(){
+  scatterChart.data.datasets[0].data = scatterPoints.map(p=>({ x:p.x, y:p.y, r: Math.max(4, Math.sqrt(p.x)*1.6) }));
+  scatterChart.data.datasets[0].backgroundColor = scatterPoints.map(p=> p.custom ? "rgba(217,169,84,.7)" : scatterColor(p.y,.5));
+  scatterChart.data.datasets[0].borderColor = scatterPoints.map(p=> p.custom ? "#D9A954" : scatterBorder(p.y));
+  scatterChart.data.datasets[0].borderWidth = scatterPoints.map(p=> p.custom ? 2.5 : 1);
+  scatterChart.update();
+}
+document.getElementById("segAdd").addEventListener("click", ()=>{
+  const nameEl = document.getElementById("segName");
+  const name = (nameEl.value || "Custom segment").trim();
+  const count = Math.max(1, +document.getElementById("segCount").value || 50);
+  const rate = Math.max(0, Math.min(100, +document.getElementById("segRate").value || 20));
+  scatterPoints.push({ x:count, y:rate, label:name, dim:"custom", custom:true });
+  refreshScatter();
+  nameEl.value = "";
+});
 
 // ---------- Metrics table ----------
 const rowsDef = [
