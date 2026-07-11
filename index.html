@@ -266,6 +266,7 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
 }
 .panel:hover::before{ opacity:1; }
 .panel > *{ position:relative; z-index:1; }
+.panel.no-spotlight::before{ display:none; content:none; }
 
 /* Ripple click effect */
 .ripple{
@@ -279,13 +280,6 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
 /* Scroll reveal */
 .reveal{ opacity:0; transform:translateY(18px); transition:opacity .6s var(--ease), transform .6s var(--ease); }
 .reveal.in-view{ opacity:1; transform:translateY(0); }
-
-/* Auto-cycling spotlight on risk segments */
-.risk-item.spotlight{
-  background:linear-gradient(90deg, rgba(217,169,84,.10), transparent);
-  border-radius:8px; padding-left:6px; margin-left:-6px;
-  box-shadow:inset 2px 0 0 var(--gold);
-}
 
 /* Live status pill */
 .live-tag{
@@ -394,11 +388,13 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
 <div class="grid">
   <div class="panel reveal">
     <h2>Workforce Composition</h2>
-    <div class="desc">Overall headcount split between retained and attrited employees.</div>
-    <canvas id="compChart" height="220"></canvas>
+    <div class="desc">Overall headcount split between retained and attrited employees. Drag either slider to see the split update live.</div>
+    <canvas id="compChart" height="200"></canvas>
+    <div class="edit-row" id="compEditRow"></div>
+    <button class="mini-toggle" id="compReset" style="margin-top:8px;">Reset to real data</button>
   </div>
 
-  <div class="panel reveal">
+  <div class="panel reveal no-spotlight">
     <h2>Top Risk Segments</h2>
     <div class="desc">Highest attrition-rate segments across all dimensions (minimum 30 employees per segment, to avoid noisy small samples).</div>
     <div id="riskSegments"></div>
@@ -647,22 +643,73 @@ new Chart(shapCtx, {
   }
 });
 
-// ---------- Workforce composition donut ----------
+// ---------- Workforce composition donut (live-editable) ----------
+const compOriginal = {
+  retained: DATA.dashboard.total_employees - DATA.dashboard.total_attrited,
+  attrited: DATA.dashboard.total_attrited
+};
+let compValues = { retained: compOriginal.retained, attrited: compOriginal.attrited };
 const compCtx = document.getElementById("compChart").getContext("2d");
-new Chart(compCtx, {
+const compChart = new Chart(compCtx, {
   type:"doughnut",
   data:{
     labels:["Retained", "Attrited"],
     datasets:[{
-      data:[DATA.dashboard.total_employees - DATA.dashboard.total_attrited, DATA.dashboard.total_attrited],
+      data:[compValues.retained, compValues.attrited],
       backgroundColor:["#2FD4C0","#E8615A"], borderWidth:0
     }]
   },
   options:{
+    animation:{ duration:400, easing:"easeOutCubic" },
     cutout:"68%",
-    plugins:{ legend:{ position:"bottom", labels:{ color:"#E7EEF2", font:{family:"IBM Plex Mono", size:11}, padding:16 } },
-      tooltip:{ callbacks:{ label:(c)=> c.label+": "+c.raw+" ("+(c.raw/DATA.dashboard.total_employees*100).toFixed(1)+"%)" } } }
+    plugins:{ legend:{ position:"bottom", labels:{ color:"#F1ECE4", font:{family:"IBM Plex Mono", size:11}, padding:16 } },
+      tooltip:{ callbacks:{ label:(c)=>{ const total = compValues.retained+compValues.attrited; return c.label+": "+c.raw+" ("+(total? (c.raw/total*100).toFixed(1) : "0")+"%)"; } } } }
   }
+});
+function buildCompEditRow(){
+  const row = document.getElementById("compEditRow");
+  const total = compValues.retained + compValues.attrited;
+  const rate = total ? (compValues.attrited/total*100) : 0;
+  row.innerHTML = `
+    <div class="edit-item">
+      <input type="range" min="0" max="2000" step="1" value="${compValues.retained}" id="compRetainedSlider" style="accent-color:#2FD4C0;">
+      <div class="ei-value" id="compRetainedVal">${compValues.retained}</div>
+      <div class="ei-label">Retained</div>
+    </div>
+    <div class="edit-item">
+      <input type="range" min="0" max="2000" step="1" value="${compValues.attrited}" id="compAttritedSlider" style="accent-color:#E8615A;">
+      <div class="ei-value" id="compAttritedVal">${compValues.attrited}</div>
+      <div class="ei-label">Attrited</div>
+    </div>
+    <div class="edit-item">
+      <div class="ei-value" id="compRateVal" style="font-size:15px; margin-top:20px;">${rate.toFixed(1)}%</div>
+      <div class="ei-label">Overall rate<br>(${total} total)</div>
+    </div>`;
+  document.getElementById("compRetainedSlider").addEventListener("input", (e)=>{
+    compValues.retained = +e.target.value;
+    refreshComp();
+  });
+  document.getElementById("compAttritedSlider").addEventListener("input", (e)=>{
+    compValues.attrited = +e.target.value;
+    refreshComp();
+  });
+}
+function refreshComp(){
+  compChart.data.datasets[0].data = [compValues.retained, compValues.attrited];
+  compChart.update("none");
+  const total = compValues.retained + compValues.attrited;
+  const rate = total ? (compValues.attrited/total*100) : 0;
+  document.getElementById("compRetainedVal").textContent = compValues.retained;
+  document.getElementById("compAttritedVal").textContent = compValues.attrited;
+  document.getElementById("compRateVal").textContent = rate.toFixed(1)+"%";
+  document.querySelector("#compEditRow .edit-item:nth-child(3) .ei-label").innerHTML = `Overall rate<br>(${total} total)`;
+  document.getElementById("compRetainedSlider").value = compValues.retained;
+  document.getElementById("compAttritedSlider").value = compValues.attrited;
+}
+buildCompEditRow();
+document.getElementById("compReset").addEventListener("click", ()=>{
+  compValues = { retained: compOriginal.retained, attrited: compOriginal.attrited };
+  refreshComp();
 });
 
 // ---------- Top risk segments ----------
@@ -1024,7 +1071,7 @@ updateLabels();
 computeRisk();
 
 // ---------- Cursor-reactive spotlight on panels ----------
-document.querySelectorAll(".panel").forEach(panel=>{
+document.querySelectorAll(".panel:not(.no-spotlight)").forEach(panel=>{
   panel.addEventListener("mousemove", (e)=>{
     const r = panel.getBoundingClientRect();
     panel.style.setProperty("--mx", (e.clientX - r.left) + "px");
@@ -1062,26 +1109,6 @@ if("IntersectionObserver" in window){
   document.querySelectorAll(".reveal").forEach(el=> el.classList.add("in-view"));
 }
 
-// ---------- Auto-cycling spotlight through Top Risk Segments ----------
-(function(){
-  const items = () => [...document.querySelectorAll("#riskSegments .risk-item:not(.safe)")];
-  let idx = 0, paused = false, timer = null;
-  function tickSpotlight(){
-    if(paused) return;
-    const list = items();
-    if(!list.length) return;
-    list.forEach(el=> el.classList.remove("spotlight"));
-    list[idx % list.length].classList.add("spotlight");
-    idx++;
-  }
-  const riskEl = document.getElementById("riskSegments");
-  if(riskEl){
-    riskEl.addEventListener("mouseenter", ()=> paused = true);
-    riskEl.addEventListener("mouseleave", ()=> paused = false);
-    tickSpotlight();
-    timer = setInterval(tickSpotlight, 2400);
-  }
-})();
 } catch (err) {
   console.error("Dashboard failed to initialize:", err);
   document.body.insertAdjacentHTML("afterbegin",
