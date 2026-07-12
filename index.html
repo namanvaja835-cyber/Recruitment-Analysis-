@@ -224,6 +224,7 @@ footer{ margin-top:30px; border-top:1px solid var(--line); padding-top:14px; col
   transition:transform .2s var(--ease);
 }
 .risk-item:hover{ transform:translateX(3px); }
+.risk-item.custom-added{ background:linear-gradient(90deg, rgba(217,169,84,.08), transparent); border-radius:6px; padding-left:6px; margin-left:-6px; }
 .risk-rank{
   font-family:var(--mono); font-size:13px; font-weight:700; color:var(--bg);
   background:var(--red); width:24px; height:24px; border-radius:50%;
@@ -518,7 +519,7 @@ document.getElementById("kpiRow").innerHTML = kpis.map((k,i)=>`
   <div class="kpi">
     <div class="label">${k.label}</div>
     <div class="value ${k.cls}" id="kpiVal${i}">${k.isText ? k.value : "0"}</div>
-    <div class="sub">${k.sub}</div>
+    <div class="sub" id="kpiSub${i}">${k.sub}</div>
   </div>`).join("");
 
 // Animate numeric KPIs counting up on load
@@ -548,6 +549,37 @@ const insights = [
 document.getElementById("insightStrip").innerHTML = insights.map(i=>`
   <div class="insight-card"><span class="icon">${i.icon}</span><span>${i.html}</span></div>
 `).join("");
+
+// ---------- Shared live state: the "domino" hub ----------
+// safeChartUpdate guards every cascaded chart.update() call: Chart.js protects its own
+// construction internally, but not every update() call, so a failure deep in one chart's
+// redraw (e.g. an unusual browser environment) must never be allowed to abort the rest of
+// this script and take the whole dashboard down with it.
+function safeChartUpdate(chart, mode){
+  try { if (chart) chart.update(mode); }
+  catch (e) { console.warn("Chart update skipped (non-fatal):", e && e.message); }
+}
+// liveMetrics drives both the Radar chart and the Metrics Table. Editing the Confusion
+// Matrix recomputes phase3.acc/f1 and pushes them here; editing the Radar sliders writes
+// here directly. Either path re-renders the table, so the table always reflects whichever
+// was touched most recently.
+let liveMetrics = {
+  phase2:   { cv:92.14, test:88.44, acc:89.0, f1:88.0 },
+  phase3:   { cv:DATA.phase3_model.cv_roc_auc*100, test:DATA.phase3_model.test_roc_auc*100, acc:DATA.phase3_model.test_accuracy*100, f1:DATA.phase3_model.test_f1*100 },
+  external: { cv:DATA.external_validation.cv_roc_auc*100, test:DATA.external_validation.test_roc_auc*100, acc:DATA.external_validation.test_accuracy*100, f1:DATA.external_validation.test_f1*100 },
+};
+function renderMetricsTable(){
+  const rows = [["CV ROC-AUC","cv"], ["Test ROC-AUC","test"], ["Test Accuracy","acc"], ["Test F1 (Attrition class)","f1"]];
+  const tbody = document.getElementById("metricsTable");
+  if(!tbody) return;
+  tbody.innerHTML = rows.map(([label,key])=>`
+    <tr>
+      <td>${label}</td>
+      <td class="num">${liveMetrics.phase2[key].toFixed(2)}%</td>
+      <td class="num">${liveMetrics.phase3[key].toFixed(2)}%</td>
+      <td class="num">${liveMetrics.external[key].toFixed(2)}%</td>
+    </tr>`).join("");
+}
 
 // ---------- Driver explorer ----------
 const dims = {
@@ -696,13 +728,19 @@ function buildCompEditRow(){
 }
 function refreshComp(){
   compChart.data.datasets[0].data = [compValues.retained, compValues.attrited];
-  compChart.update("none");
+  safeChartUpdate(compChart, "none");
   const total = compValues.retained + compValues.attrited;
   const rate = total ? (compValues.attrited/total*100) : 0;
   document.getElementById("compRetainedVal").textContent = compValues.retained;
   document.getElementById("compAttritedVal").textContent = compValues.attrited;
   document.getElementById("compRateVal").textContent = rate.toFixed(1)+"%";
   document.querySelector("#compEditRow .edit-item:nth-child(3) .ei-label").innerHTML = `Overall rate<br>(${total} total)`;
+  // Domino: cascade into the "Employees analysed" and "Overall attrition rate" KPI cards
+  const kpiVal0 = document.getElementById("kpiVal0"), kpiVal1 = document.getElementById("kpiVal1");
+  const kpiSub1 = document.getElementById("kpiSub1");
+  if(kpiVal0) kpiVal0.textContent = total;
+  if(kpiVal1) kpiVal1.textContent = Math.round(rate)+"%";
+  if(kpiSub1) kpiSub1.textContent = `${compValues.attrited} of ${total} employees left`;
   document.getElementById("compRetainedSlider").value = compValues.retained;
   document.getElementById("compAttritedSlider").value = compValues.attrited;
 }
@@ -712,27 +750,45 @@ document.getElementById("compReset").addEventListener("click", ()=>{
   refreshComp();
 });
 
-// ---------- Top risk segments ----------
+// ---------- Top risk segments (mutable — new segments added via the scatter panel can join this list) ----------
 const riskEl = document.getElementById("riskSegments");
-const topRows = DATA.risk_segments.top.map((s,i)=>`
-  <div class="risk-item">
-    <div class="risk-rank">${i+1}</div>
-    <div class="risk-body">
-      <div class="risk-title">${s.category}</div>
-      <div class="risk-sub">${s.dimension} · n=${s.count}</div>
-    </div>
-    <div class="risk-rate red">${s.rate}%</div>
-  </div>`).join("");
-const safeRows = DATA.risk_segments.safest.map((s,i)=>`
-  <div class="risk-item safe">
-    <div class="risk-rank">✓</div>
-    <div class="risk-body">
-      <div class="risk-title">${s.category}</div>
-      <div class="risk-sub">${s.dimension} · n=${s.count}</div>
-    </div>
-    <div class="risk-rate teal">${s.rate}%</div>
-  </div>`).join("");
-riskEl.innerHTML = topRows + `<div style="margin:14px 0 6px; font-size:11px; color:var(--muted); font-family:var(--mono); text-transform:uppercase; letter-spacing:.05em;">Safest segments</div>` + safeRows;
+let riskSegmentsTop = DATA.risk_segments.top.map(s=>({...s}));
+const riskSegmentsSafe = DATA.risk_segments.safest;
+function renderRiskSegments(){
+  const topRows = riskSegmentsTop.map((s,i)=>`
+    <div class="risk-item${s.custom ? " custom-added":""}">
+      <div class="risk-rank">${i+1}</div>
+      <div class="risk-body">
+        <div class="risk-title">${s.category}${s.custom ? " <span style=\"color:var(--gold-soft); font-family:var(--mono); font-size:10px;\">(added live)</span>":""}</div>
+        <div class="risk-sub">${s.dimension} · n=${s.count}</div>
+      </div>
+      <div class="risk-rate red">${s.rate}%</div>
+    </div>`).join("");
+  const safeRows = riskSegmentsSafe.map((s,i)=>`
+    <div class="risk-item safe">
+      <div class="risk-rank">✓</div>
+      <div class="risk-body">
+        <div class="risk-title">${s.category}</div>
+        <div class="risk-sub">${s.dimension} · n=${s.count}</div>
+      </div>
+      <div class="risk-rate teal">${s.rate}%</div>
+    </div>`).join("");
+  riskEl.innerHTML = topRows + `<div style="margin:14px 0 6px; font-size:11px; color:var(--muted); font-family:var(--mono); text-transform:uppercase; letter-spacing:.05em;">Safest segments</div>` + safeRows;
+}
+renderRiskSegments();
+// Called by the Segment Landscape "add segment" form — a real cross-panel domino
+function maybeInsertIntoRiskSegments(candidate){
+  if(candidate.count < 30) return false; // keep the same n>=30 rule used to build this list originally
+  const lowestRate = riskSegmentsTop.length ? riskSegmentsTop[riskSegmentsTop.length-1].rate : -1;
+  if(riskSegmentsTop.length < 5 || candidate.rate > lowestRate){
+    riskSegmentsTop.push({...candidate, custom:true});
+    riskSegmentsTop.sort((a,b)=> b.rate - a.rate);
+    riskSegmentsTop = riskSegmentsTop.slice(0,5);
+    renderRiskSegments();
+    return true;
+  }
+  return false;
+}
 
 // ---------- Sample employee explanation cards ----------
 const empEx = DATA.employee_examples;
@@ -799,8 +855,11 @@ function buildTenureEditRow(){
       const v = +e.target.value;
       tenureData[i] = v;
       tenureChart.data.datasets[0].data[i] = v;
-      tenureChart.update("none");
+      safeChartUpdate(tenureChart, "none");
       document.getElementById("tenureVal"+i).textContent = v.toFixed(1)+"%";
+      // Domino: the "Years At Company" bubbles in Segment Landscape are the same
+      // underlying rows as this chart — move the matching bubble live too.
+      if(typeof updateScatterFromTenure === "function") updateScatterFromTenure(i, v);
     });
   });
 }
@@ -808,8 +867,9 @@ buildTenureEditRow();
 document.getElementById("tenureReset").addEventListener("click", ()=>{
   tenureData = tenureRowsOriginal.map(r=>r.mean);
   tenureChart.data.datasets[0].data = tenureData.slice();
-  tenureChart.update();
+  safeChartUpdate(tenureChart);
   buildTenureEditRow();
+  if(typeof resetScatterTenurePoints === "function") resetScatterTenurePoints();
 });
 
 // ---------- Model profile radar chart (live-editable) ----------
@@ -849,13 +909,17 @@ function buildRadarEditRow(){
       <div class="ei-label">${lbl.replace(" ROC-AUC","")}<br>${key==="p3"?"Ph.III":"Ext."}</div>
     </div>`).join("");
   row.innerHTML = mk("p3","#2FD4C0") + mk("ext","#D9A954");
+  const metricKeys = ["cv","test","acc","f1"];
   row.querySelectorAll(".radar-slider").forEach(sl=>{
     sl.addEventListener("input", (e)=>{
       const key = e.target.dataset.key, i = +e.target.dataset.i, v = +e.target.value;
       radarData[key][i] = v;
       radarChart.data.datasets[key==="p3"?0:1].data[i] = v;
-      radarChart.update("none");
+      safeChartUpdate(radarChart, "none");
       document.getElementById(`radarVal_${key}_${i}`).textContent = v.toFixed(1)+"%";
+      // Domino: push this value into the shared metrics state and re-render the table
+      liveMetrics[key==="p3"?"phase3":"external"][metricKeys[i]] = v;
+      renderMetricsTable();
     });
   });
 }
@@ -864,8 +928,12 @@ document.getElementById("radarReset").addEventListener("click", ()=>{
   radarData = { p3: radarOriginal.p3.slice(), ext: radarOriginal.ext.slice() };
   radarChart.data.datasets[0].data = radarData.p3.slice();
   radarChart.data.datasets[1].data = radarData.ext.slice();
-  radarChart.update();
+  safeChartUpdate(radarChart);
   buildRadarEditRow();
+  // Domino: restore the shared metrics state too, so the table resets in sync
+  liveMetrics.phase3 = { cv:DATA.phase3_model.cv_roc_auc*100, test:DATA.phase3_model.test_roc_auc*100, acc:DATA.phase3_model.test_accuracy*100, f1:DATA.phase3_model.test_f1*100 };
+  liveMetrics.external = { cv:DATA.external_validation.cv_roc_auc*100, test:DATA.external_validation.test_roc_auc*100, acc:DATA.external_validation.test_accuracy*100, f1:DATA.external_validation.test_f1*100 };
+  renderMetricsTable();
 });
 
 // ---------- Confusion matrix heatmap (live-editable) ----------
@@ -929,6 +997,22 @@ function renderDerivedMetrics(){
     ["Total", total, ""], ["Accuracy", acc.toFixed(1), "%"], ["Precision", prec.toFixed(1), "%"],
     ["Recall", rec.toFixed(1), "%"], ["F1 Score", f1.toFixed(1), "%"],
   ].map(([l,v,s])=>`<div class="dm-item">${l}<b>${v}${s}</b></div>`).join("");
+
+  // Domino: Accuracy and F1 computed here are the *real* Phase III model figures for this
+  // confusion matrix, so push them into the Radar chart, its sliders, and the Metrics Table.
+  if(typeof radarChart !== "undefined"){
+    radarData.p3[2] = acc; radarData.p3[3] = f1;
+    radarChart.data.datasets[0].data[2] = acc;
+    radarChart.data.datasets[0].data[3] = f1;
+    safeChartUpdate(radarChart, "none");
+    const accSlider = document.querySelector('.radar-slider[data-key="p3"][data-i="2"]');
+    const f1Slider = document.querySelector('.radar-slider[data-key="p3"][data-i="3"]');
+    if(accSlider){ accSlider.value = acc; document.getElementById("radarVal_p3_2").textContent = acc.toFixed(1)+"%"; }
+    if(f1Slider){ f1Slider.value = f1; document.getElementById("radarVal_p3_3").textContent = f1.toFixed(1)+"%"; }
+  }
+  liveMetrics.phase3.acc = acc;
+  liveMetrics.phase3.f1 = f1;
+  renderMetricsTable();
 }
 renderConfusionMatrix();
 renderDerivedMetrics();
@@ -951,6 +1035,20 @@ Object.entries(scatterDimMap).forEach(([key, catField])=>{
     scatterPoints.push({ x: row.count, y: row.mean, label: String(row[catField]), dim: key.replace("by_",""), custom:false });
   });
 });
+// "Years At Company" is the last dimension folded in above, in the same row order as the
+// Tenure line chart — capture that offset once so tenure edits can move the matching bubble.
+const tenureScatterOffset = scatterPoints.length - (DATA.dashboard.by_yearsatcompany || []).length;
+function updateScatterFromTenure(i, v){
+  const idx = tenureScatterOffset + i;
+  if(scatterPoints[idx]){ scatterPoints[idx].y = v; refreshScatter(); }
+}
+function resetScatterTenurePoints(){
+  (DATA.dashboard.by_yearsatcompany || []).forEach((row,i)=>{
+    const idx = tenureScatterOffset + i;
+    if(scatterPoints[idx]) scatterPoints[idx].y = row.mean;
+  });
+  refreshScatter();
+}
 function scatterColor(y, alpha){ return y>25?`rgba(232,97,90,${alpha})`: y>15?`rgba(240,169,58,${alpha})`:`rgba(47,212,192,${alpha})`; }
 function scatterBorder(y){ return y>25?"#E8615A": y>15?"#F0A93A":"#2FD4C0"; }
 const scatterCtx = document.getElementById("scatterChart").getContext("2d");
@@ -963,7 +1061,7 @@ const scatterChart = new Chart(scatterCtx, {
     borderWidth: scatterPoints.map(p=> p.custom ? 2.5 : 1),
   }]},
   options:{
-    animation:{ duration:500, easing:"easeOutCubic" },
+    animation:{ duration:400, easing:"easeOutCubic" },
     plugins:{ legend:{display:false},
       tooltip:{ callbacks:{ label:(c)=>{ const p = scatterPoints[c.dataIndex]; return `${p.label}${p.custom?" (custom)":""}: ${p.y}% attrition, n=${p.x}`; } } } },
     scales:{
@@ -977,7 +1075,7 @@ function refreshScatter(){
   scatterChart.data.datasets[0].backgroundColor = scatterPoints.map(p=> p.custom ? "rgba(217,169,84,.7)" : scatterColor(p.y,.5));
   scatterChart.data.datasets[0].borderColor = scatterPoints.map(p=> p.custom ? "#D9A954" : scatterBorder(p.y));
   scatterChart.data.datasets[0].borderWidth = scatterPoints.map(p=> p.custom ? 2.5 : 1);
-  scatterChart.update();
+  safeChartUpdate(scatterChart, "none");
 }
 document.getElementById("segAdd").addEventListener("click", ()=>{
   const nameEl = document.getElementById("segName");
@@ -986,23 +1084,17 @@ document.getElementById("segAdd").addEventListener("click", ()=>{
   const rate = Math.max(0, Math.min(100, +document.getElementById("segRate").value || 20));
   scatterPoints.push({ x:count, y:rate, label:name, dim:"custom", custom:true });
   refreshScatter();
+  // Domino: a large enough, high-enough custom segment can bump its way into Top Risk Segments
+  const madeTopList = maybeInsertIntoRiskSegments({ dimension:"Custom", category:name, rate, count });
   nameEl.value = "";
+  if(!madeTopList && count < 30){
+    nameEl.placeholder = "n<30 won't reach the risk list";
+    setTimeout(()=> nameEl.placeholder = "Segment name", 2200);
+  }
 });
 
-// ---------- Metrics table ----------
-const rowsDef = [
-  ["CV ROC-AUC", 92.14, DATA.phase3_model.cv_roc_auc*100, DATA.external_validation.cv_roc_auc*100],
-  ["Test ROC-AUC", 88.44, DATA.phase3_model.test_roc_auc*100, DATA.external_validation.test_roc_auc*100],
-  ["Test Accuracy", 89.0, DATA.phase3_model.test_accuracy*100, DATA.external_validation.test_accuracy*100],
-  ["Test F1 (Attrition class)", 88.0, DATA.phase3_model.test_f1*100, DATA.external_validation.test_f1*100],
-];
-document.getElementById("metricsTable").innerHTML = rowsDef.map(r=>`
-  <tr>
-    <td>${r[0]}</td>
-    <td class="num">${r[1].toFixed(2)}%</td>
-    <td class="num">${r[2].toFixed(2)}%</td>
-    <td class="num">${r[3].toFixed(2)}%</td>
-  </tr>`).join("");
+// ---------- Metrics table (initial render; also called by Radar and Confusion Matrix cascades) ----------
+renderMetricsTable();
 
 // ---------- Risk simulator ----------
 const ids = ["overtime","stock","jobsat","wlb","income","years"];
